@@ -1,0 +1,20 @@
+{
+    "name": "brunonatali/tools",
+    "description": "Tools to help development.",
+    "license": "MIT",
+    "require": {
+			"php": ">=7.3"
+			"brunonatali/event-loop": "dev-master"
+	},
+	"require-dev": {
+		"clue/block-react": "^1.2",
+		"phpunit/phpunit": "^6.4 || ^5.7 || ^4.8.35"
+	},
+	"autoload": {
+		"psr-4": {
+			"BrunoNatali\\Tools\\": "src"
+		}
+	},
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
