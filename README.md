@@ -8,10 +8,10 @@ This lib was write thinking to help new projects, bringing them to life much mor
 
 * [Quickstart example](#quickstart-example)
 * [System Interaction](#connection-usage)
-  * [setAppInitiated()](#setAppInitiated)
-	* [getAppInitiated()](#getAppInitiated)
-	* [setFunctionOnAppAborted()](#setFunctionOnAppAborted)
-  * [setAborted()](#setAborted)
+    * [setAppInitiated()](#setAppInitiated)
+	  * [getAppInitiated()](#getAppInitiated)
+	  * [setFunctionOnAppAborted()](#setFunctionOnAppAborted)
+    * [setAborted()](#setAborted)
 * [Install](#install)
 * [Tests](#tests)
 * [License](#license)
@@ -23,7 +23,7 @@ This is the ways to be construct this:
 ```php
 $systemInteraction = new BrunoNatali\Tools\SystemInteraction();
 
-alternatively you can set system folder by hand
+// Alternatively you can set system folder by hand
 
 $mySystemFolder = ['/home/user/myApp/', '/var/myfolder/myApp/'];
 $systemInteraction = new BrunoNatali\Tools\SystemInteraction($mySystemFolder);

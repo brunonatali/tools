@@ -3,7 +3,7 @@
     "description": "Tools to help development.",
     "license": "MIT",
     "require": {
-			"php": ">=7.3"
+			"php": ">=7.3",
 			"brunonatali/event-loop": "dev-master"
 	},
 	"require-dev": {
