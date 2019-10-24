@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace BrunoNatali\SysTema\Misc;
+namespace BrunoNatali\Tools;
 
 use SplQueue;
 use BrunoNatali\EventLoop\LoopInterface;
