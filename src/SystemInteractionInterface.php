@@ -4,8 +4,22 @@ namespace BrunoNatali\Tools;
 
 interface SystemInteractionInterface
 {
-    // This will only work under unix.
-    // Need to be implemented something like: if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN')
-    Const SYSTEM_RUN_FOLDER = ['/run/systema/', '/var/run/systema/'];
+    Const SYSTEM_RUN_FOLDER_UNIX = ['/run/systema/', '/var/run/systema/'];
+    Const SYSTEM_RUN_FOLDER_WIN = ['%TEMP%/systema/'];
+
+    Const SYSTEM = [
+        'UNIX' = 0x01,
+        'WIN' = 0x02
+    ]
+
+    Public function setAppInitiated(string $appName, bool $regShdn = true);
+
+    Public function setAborted();
+
+    Public function getAppInitiated(string $appName);
+
+    Public function setFunctionOnAppAborted(callable $func);
+
+    Public function getSystem();
 }
 ?>

@@ -2,10 +2,9 @@
 
 namespace BrunoNatali\Tools;
 
-use BrunoNatali\SysTema\Defines\GeneralDefinesInterface;
-
 class SystemInteraction implements SystemInteractionInterface
 {
+    Private $system = 0x00;
     Private $sysRunFolder;
     Private $sysRegisterShdn = false;
     Protected $systemIsSHDN = false;
@@ -13,7 +12,15 @@ class SystemInteraction implements SystemInteractionInterface
 
     function __construct(array $runFolder = [])
     {
-        if (!count($runFolder)) $this->sysRunFolder = self::SYSTEM_RUN_FOLDER;
+        if (is_empty($runFolder)) {
+            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                $this->system = self::SYSTEM['WIN'];
+                $this->sysRunFolder = self::SYSTEM_RUN_FOLDER_WIN;
+            } else {
+                $this->system = self::SYSTEM['UNIX'];
+                $this->sysRunFolder = self::SYSTEM_RUN_FOLDER_UNIX;
+            }
+        }
         else $this->sysRunFolder = $runFolder;
     }
 
@@ -74,5 +81,10 @@ class SystemInteraction implements SystemInteractionInterface
         }
         $this->functionsOnAborted[] = $func;
         return true;
+    }
+
+    Public function getSystem(): int
+    {
+        return $this->system;
     }
 }
