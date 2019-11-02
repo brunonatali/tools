@@ -16,12 +16,16 @@ interface SystemInteractionInterface
 
     Public function setAborted();
 
-    Public function getAppInitiated(string $appName);
+    Public function getAppInitiated(string $appName = null);
+
+    Public function getAppRequestRestart(string $appName = null);
 
     Public function setFunctionOnAppAborted(callable $func);
 
     Public function getSystem();
-	
+
 	Public function removePidFile();
+
+    Public function restartApp();
 }
 ?>

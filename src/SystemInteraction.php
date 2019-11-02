@@ -10,16 +10,17 @@ class SystemInteraction implements SystemInteractionInterface
     Protected $systemIsSHDN = false;
     Private $functionsOnAborted = [];
 	Private $myAppName;
+    Private $myPid;
+    Private $loop;
 
-    function __construct(array $runFolder = [])
+    function __construct(array $runFolder = [], LoopInterface &$loop = null)
     {
-		
 		if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
 			$this->system = self::SYSTEM['WIN'];
 		} else {
 			$this->system = self::SYSTEM['UNIX'];
 		}
-		
+
         if (empty($runFolder)) {
             if ($this->system === self::SYSTEM['WIN']) {
                 $this->sysRunFolder = self::SYSTEM_RUN_FOLDER_WIN;
@@ -28,35 +29,37 @@ class SystemInteraction implements SystemInteractionInterface
             }
         }
         else $this->sysRunFolder = $runFolder;
+
+        $this->loop = &$loop;
     }
 
     Public function setAppInitiated(string $appName, bool $regShdn = true): bool
     {
 		$this->myAppName = $appName;
-        if ($this->getAppInitiated($appName)) 
+        if ($this->getAppInitiated())
             throw new \Exception('App "' . $appName . '" already set as initiated.');
 
-        $thisAppPid = getmypid();
+        $this->myPid = getmypid();
 
         foreach ($this->sysRunFolder as $sysRunFolder) {
             $pidHandle = fopen($sysRunFolder . $this->myAppName . '.pid', 'w+');
-            if (fwrite($pidHandle, (string)$thisAppPid) === FALSE){
+            if (fwrite($pidHandle, (string)$this->myPid) === FALSE){
         		throw new \Exception('ERROR creating pid file.');
         	}
             @fclose($pidHandle);
         }
 
         if (!$regShdn) return true;
-		
+
         $this->sysRegisterShdn = $regShdn;
         $this->setFunctionOnAppAborted(function () {
             $this->removePidFile();
         });
-		
+
         register_shutdown_function([$this, 'setAborted']);
-		
+
 		if ($this->system !== self::SYSTEM['UNIX']) return true;
-		
+
     	pcntl_signal(SIGTERM, [$this, 'setAborted']);
     	pcntl_signal(SIGHUP,  [$this, 'setAborted']);
     	pcntl_signal(SIGINT,  [$this, 'setAborted']);
@@ -73,10 +76,22 @@ class SystemInteraction implements SystemInteractionInterface
         exit; // Exit must be called to close script, otherwise script will block system shutdown.
     }
 
-    Public function getAppInitiated(string $appName): bool
+    Public function getAppInitiated(string $appName = null): bool
     {
+        if ($appName === null) $appName = $this->myAppName;
+
         foreach ($this->sysRunFolder as $sysRunFolder)
             if(file_exists($sysRunFolder . $appName . '.pid')) return true;
+
+        return false;
+    }
+
+    Public function getAppRequestRestart(string $appName = null): bool
+    {
+        if ($appName === null) $appName = $this->myAppName;
+
+        foreach ($this->sysRunFolder as $sysRunFolder)
+            if(file_exists($sysRunFolder . $appName . '.reboot')) return true;
 
         return false;
     }
@@ -112,25 +127,46 @@ class SystemInteraction implements SystemInteractionInterface
 					$processes = explode( "\n", shell_exec( "tasklist.exe" ));
 					foreach ( $processes as $process ) {
 						if( trim($process) == "" ||
-							strpos( "Image Name", $process ) === 0 || 
+							strpos( "Image Name", $process ) === 0 ||
 							strpos( "===", $process ) === 0 ) continue;
-						
+
 						$matches = false;
 						preg_match( "/(.*?)\s+(\d+).*$/", $process, $matches );
 						if (isset($matches[2]) && $pid == $matches[2]) {
 							$pidFound = true;
 							break;
 						}
-						
+
 					}
-					
+
 					if (!$pidFound) {
 						@unlink($sysRunFolder . $this->myAppName . '.pid');
 						$toReturn = true;
 					}
 				}
 			}
-		
+
 		return $toReturn;
 	}
+
+    Public function restartApp(): int
+    {
+        if ($this->loop === null)
+            throw new \Exception('To use this function provide a LoopInterface in construction.');
+
+        if ($this->getAppRequestRestart()) return 2;
+
+        foreach ($this->sysRunFolder as $sysRunFolder) {
+            $pidHandle = fopen($sysRunFolder . $this->myAppName . '.reboot', 'w+');
+            if (fwrite($pidHandle, (string)$this->myPid) === FALSE){
+        		throw new \Exception('ERROR creating pid file.');
+        	}
+            @fclose($pidHandle);
+        }
+
+        $cmdArgs = (isset($argv) ? implode(' ', $tempArgv) : '');
+        
+        // checar como esta sendo chamado o php atraves da linha de comando para conseguir chamar da mesma forma
+        exec("php $cmdArgs > /dev/null 2>&1 &");
+    }
 }
