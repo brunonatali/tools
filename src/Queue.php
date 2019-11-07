@@ -3,7 +3,7 @@
 namespace BrunoNatali\Tools;
 
 use SplQueue;
-use BrunoNatali\EventLoop\LoopInterface;
+use React\EventLoop\LoopInterface;
 
 class Queue
 {
@@ -76,7 +76,11 @@ class Queue
 
     Public function listRemove(string $id)
     {
-        if (isset($this->listById[$id])) unset($this->listById[$id]);
+        if (isset($this->listById[$id])) {
+			unset($this->listById[$id]);
+			return true;
+		}
+		return false;
     }
 
     Public function getTryByListId($id)
@@ -100,38 +104,47 @@ class Queue
         return $this->next();
     }
 
-    Public function next()
+	// Count could be true (run to infinite until have elements on the list, false, to run once or number of items that it must collect and parse)
+    Public function next($count = true)
     {
         if ($this->main->isEmpty()) return null;
         if (!$this->enabled || $this->running) {
             $this->waitToRun = true;
             return false;
         }
-
+		
         $queueExecuteNode = $this->main->dequeue();
         if (is_callable($queueExecuteNode)) {
             $this->running = true;
-            $this->timer = $this->loop->addTimer(0.1, function () use ($queueExecuteNode){
+            $this->timer = $this->loop->addTimer(0.1, function () use ($queueExecuteNode, &$count){
                 $queueExecuteNode();
                 $this->running = false;
                 $this->timer = null;
-                $this->next();
+				$count --;
+                if ($count) $this->next($count);
+				else $this->pause();
             });
         }
         return true;
     }
+
+	Public function nextTillEnd()
+	{
+		if ( !$this->next( $this->main->count() ) ) 
+			$this->pause();
+	}
 
     Public function pause()
     {
         $this->enabled = false;
     }
 
-    Public function resume()
+    Public function resume(bool $continue = true)
     {
         $this->enabled = true;
         if ($this->waitToRun) {
             $this->waitToRun = false;
-            $this->next();
+            if ($continue) $this->next();
         }
     }
 
