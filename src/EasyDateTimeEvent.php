@@ -10,20 +10,47 @@ class EasyDateTimeEvent
 
     Private $dayFuncArr = [];
     Private $dayFuncArrIndex = 0; // Will increment in function and never will be zeroe
-    Private $dayFuncTimer = null;
+    Private $dayFuncVars = [
+        'timer' => null,
+        'today' => null
+    ];
 
+    Private $t[
+        'minute' => 60,
+        'hour' => 3600,
+        'day' => 86400
+    ];
 
-
-    function __construct(LoopInterface &$loop, $timeToAnswer = 0)
+    function __construct(LoopInterface &$loop)
     {
         $this->loop = &$loop;
     }
 
-    Public function addDayTrigger(callable $func): int
+    Public function addDayTrigger(callable $func = null): int
     {
-        $today = date("d");
+        if ($func !== null) $this->dayFuncArr[ ++$this->dayFuncArrIndex ] = $func;
 
-        $this->dayFuncArr[ ++$this->dayFuncArrIndex ] = $func;
+        if ($this->dayFuncVars['timer'] === null) {
+            $this->dayFuncVars['today'] = date("d");
+
+            $time = $this->getSecondsTillDayEnd();
+            echo "addDayTrigger ---> $time" . PHP_EOL;
+            
+            $me = &$this;
+            $this->addTimer($this->dayFuncTimer, $time, function () use ($me) {
+                if ($me->dayFuncVars['today'] === date("d") && (date("i") != 59 || date("s") < 59)) {
+                    $me->addDayTrigger();
+                    return;
+                }
+                foreach ($me->dayFuncArr as $dayFunc) $dayFunc();
+                $me->addDayTrigger();
+            },
+            false);
+        } else {
+            $this->loop->cancelTimer($this->dayFuncVars['timer']);
+            $this->addDayTrigger();
+        }
+
         return $this->dayFuncArrIndex;
     }
 
@@ -34,13 +61,21 @@ class EasyDateTimeEvent
         return true;
     }
 
-    Private function addTimer(&$var, float $time, bool $periodic = true)
+    Public function getSecondsTillDayEnd(): int
+    {
+        $now = time();
+        $time = $t['day'] - (date("H") * $t['hour']) - (date("i") * $t['minute']) - date("s");
+        $time += $now - time(); // calculate drift time
+        return $time;
+    }
+
+    Private function addTimer(&$timer, float $time, callable $func, bool $periodic = true)
     {
         $time = round($time, 2);
         if ($periodic) {
-            $this->loop-addPeriodicTimer($time, function () {
-                
-            });
+            $timer = $this->loop-addPeriodicTimer($time, $func);
+        } else {
+            $timer = $this->loop-addTimer($time, $func);
         }
     }
 }
