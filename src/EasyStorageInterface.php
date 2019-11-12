@@ -7,7 +7,7 @@ interface EasyStorageInterface
     Const AS_JSON = 0x01;
 
     Const IDENTIFIER_VAR = '$identifier';
-    Const DEFAULT_IDENTIFIER = '$fileName_$arrayName';
+    Const DEFAULT_IDENTIFIER = '$fileName . "_" . $arrayName';
     Const EQUAL = ' = ';
     Const SEMICOLON = ';';
 }
