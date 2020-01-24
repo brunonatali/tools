@@ -13,9 +13,11 @@ class Debug implements DebugInterface
     Private $eolMsg = null; // Eol to append
     Private $lastMsgHasEol = true;
 
-    function __construct(array $config = [], LoopInterface &$loop = null)
+    //function __construct(array $config = [], LoopInterface &$loop = null)
+    function __construct(array $config = [])
     {
-        
+        foreach ($config as $key => $value) 
+            if (isset($this->$key)) $this->$key = $this->$value
     }
 
     Public function enable()
