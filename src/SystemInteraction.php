@@ -2,6 +2,8 @@
 
 namespace BrunoNatali\Tools;
 
+use BrunoNatali\Tools\SysInfo;
+
 class SystemInteraction implements SystemInteractionInterface
 {
     Private $system = 0x00;
@@ -36,6 +38,9 @@ class SystemInteraction implements SystemInteractionInterface
     Public function setAppInitiated(string $appName, bool $regShdn = true): bool
     {
 		$this->myAppName = $appName;
+        while ($this->getAppRequestRestart()) { // Pause application til reboot
+            sleep(1);
+        }
         if ($this->getAppInitiated())
             throw new \Exception('App "' . $appName . '" already set as initiated.');
 
@@ -111,18 +116,18 @@ class SystemInteraction implements SystemInteractionInterface
         return $this->system;
     }
 
-	Public function removePidFile(): bool
+	Public function removePidFile(bool $rebootPid = false): bool
 	{
 		$toReturn = false;
 		foreach ($this->sysRunFolder as $sysRunFolder)
-            if(file_exists($sysRunFolder . $this->myAppName . '.pid')) {
+            if(file_exists($sysRunFolder . $this->myAppName . ($rebootPid ? '.reboot' : '.pid'))) {
 				if ($this->system === self::SYSTEM['UNIX']) {
-					if (!file_exists( "/proc/" . file_get_contents($sysRunFolder . $this->myAppName . '.pid'))) {
+					if (!file_exists( "/proc/" . file_get_contents($sysRunFolder . $this->myAppName . ($rebootPid ? '.reboot' : '.pid')))) {
 						@unlink($sysRunFolder . $this->myAppName . '.pid');
 						$toReturn = true;
 					}
 				} else {
-					$pid = file_get_contents($sysRunFolder . $this->myAppName . '.pid');
+					$pid = file_get_contents($sysRunFolder . $this->myAppName . ($rebootPid ? '.reboot' : '.pid'));
 					$pidFound = false;
 					$processes = explode( "\n", shell_exec( "tasklist.exe" ));
 					foreach ( $processes as $process ) {
@@ -140,7 +145,7 @@ class SystemInteraction implements SystemInteractionInterface
 					}
 
 					if (!$pidFound) {
-						@unlink($sysRunFolder . $this->myAppName . '.pid');
+						@unlink($sysRunFolder . $this->myAppName . ($rebootPid ? '.reboot' : '.pid'));
 						$toReturn = true;
 					}
 				}
@@ -151,22 +156,41 @@ class SystemInteraction implements SystemInteractionInterface
 
     Public function restartApp(): int
     {
+        // Just work in UNIX now
+        if ($this->system !== self::SYSTEM['UNIX']) return self::ERROR_SYSTEM_NOT_SUPPORTED;
+
         if ($this->loop === null)
             throw new \Exception('To use this function provide a LoopInterface in construction.');
 
-        if ($this->getAppRequestRestart()) return 2;
+        if ($this->getAppRequestRestart()) return self::ERROR_BUSY_WITH_SAME_REQUEST;
 
         foreach ($this->sysRunFolder as $sysRunFolder) {
             $pidHandle = fopen($sysRunFolder . $this->myAppName . '.reboot', 'w+');
             if (fwrite($pidHandle, (string)$this->myPid) === FALSE){
-        		throw new \Exception('ERROR creating pid file.');
+        		throw new \Exception('ERROR creating reboot pid file.');
         	}
             @fclose($pidHandle);
         }
 
-        $cmdArgs = (isset($argv) ? implode(' ', $tempArgv) : '');
+        $return = self::ERROR_OK;
+        $cmdArgs = (isset($argv) ? implode(' ', $argv) : '');
+    
+        if ($this->system === self::SYSTEM['UNIX']) {
+            $procRunningNow = SysInfo::getCommandByProcName([$this->myAppName]);
+        } else {
+            // To use when implemented for windows too
+        }
         
-        // checar como esta sendo chamado o php atraves da linha de comando para conseguir chamar da mesma forma
-        exec("php $cmdArgs > /dev/null 2>&1 &");
+        if (is_array($procRunningNow)) {
+            // Need to look this case, for now will use generic call
+            exec("php $cmdArgs > /dev/null 2>&1 &");
+            $return self::ERROR_COULD_NOT_COMPLETE_PARSE;
+        } else {
+            exec("$procRunningNow $cmdArgs > /dev/null 2>&1 &");
+        }
+        
+        $this->setFunctionOnAppAborted($this->removePidFile(true));
+        $this->setAborted();
+        return $return;
     }
 }
