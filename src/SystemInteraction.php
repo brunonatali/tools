@@ -3,6 +3,7 @@
 namespace BrunoNatali\Tools;
 
 use BrunoNatali\Tools\SysInfo;
+use BrunoNatali\Tools\Debug;
 
 class SystemInteraction implements SystemInteractionInterface
 {
@@ -14,6 +15,7 @@ class SystemInteraction implements SystemInteractionInterface
 	Private $myAppName;
     Private $myPid;
     Private $loop;
+    Private $debug;
 
     function __construct(array $runFolder = [], LoopInterface &$loop = null)
     {
@@ -33,6 +35,7 @@ class SystemInteraction implements SystemInteractionInterface
         else $this->sysRunFolder = $runFolder;
 
         $this->loop = &$loop;
+        $this->debug = new Debug();
     }
 
     Public function setAppInitiated(string $appName, bool $regShdn = true): bool
@@ -54,21 +57,29 @@ class SystemInteraction implements SystemInteractionInterface
             @fclose($pidHandle);
         }
 
-        if (!$regShdn) return true;
+        if (!$regShdn) {
+            $this->debug->stdout("App initiated.", Debug::LEVEL_NOTICE);
+            return true;
+        }
 
         $this->sysRegisterShdn = $regShdn;
         $this->setFunctionOnAppAborted(function () {
+            $this->debug->stdout("Called app abort / close. Starting shutdown.", Debug::LEVEL_NOTICE);
             $this->removePidFile();
         });
 
         register_shutdown_function([$this, 'setAborted']);
 
-		if ($this->system !== self::SYSTEM['UNIX']) return true;
+		if ($this->system !== self::SYSTEM['UNIX']) {
+            $this->debug->stdout("App initiated.", Debug::LEVEL_NOTICE);
+            return true;
+        }
 
     	pcntl_signal(SIGTERM, [$this, 'setAborted']);
     	pcntl_signal(SIGHUP,  [$this, 'setAborted']);
     	pcntl_signal(SIGINT,  [$this, 'setAborted']);
 
+        $this->debug->stdout("App initiated.", Debug::LEVEL_NOTICE);
         return true;
     }
 
@@ -76,6 +87,7 @@ class SystemInteraction implements SystemInteractionInterface
     {
         if ($this->systemIsSHDN) return;
         $this->systemIsSHDN = true;
+        $this->debug->stdout("App actively aborted.", Debug::LEVEL_NOTICE);
 
         foreach ($this->functionsOnAborted as $func) $func();
         exit; // Exit must be called to close script, otherwise script will block system shutdown.
