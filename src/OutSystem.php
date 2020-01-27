@@ -4,20 +4,20 @@ namespace BrunoNatali\Tools;
 
 //use React\EventLoop\LoopInterface; // LoopInterface will be used to save log file using debug
 
-class Debug implements DebugInterface
+class OutSystem implements DebugInterface
 {
-    Private $debugEnabled = self::DEFAULT_DEBUG_ENABLED;
-    Private $debugLevel = self::LEVEL_ALL; // Construct debug with all levels enabled
-    Private $debugEol = self::DEFAULT_DEBUG_EOL; 
-    Private $debugEolMsg = null; // Eol to append - Auto configure at construct or direct call 
-    Private $debugName = self::DEFAULT_DEBUG_NAME; 
-    Private $defaultLevel = self::DEFAULT_DEBUG_LEVEL; 
+    Private $outSystemEnabled = self::DEFAULT_OUT_SYSTEM_ENABLED;
+    Private $outSystemLevel = self::LEVEL_ALL; // Construct debug with all levels enabled
+    Private $outSystemEol = self::DEFAULT_OUT_SYSTEM_EOL; 
+    Private $outSystemEolMsg = null; // Eol to append - Auto configure at construct or direct call 
+    Private $outSystemName = self::DEFAULT_OUT_SYSTEM_NAME; 
+    Private $defaultLevel = self::DEFAULT_OUT_SYSTEM_LEVEL; 
     Private $lastMsgHasEol = true;
 
     //function __construct(array $config = [], LoopInterface &$loop = null)
     function __construct(array $config = [])
     {
-        $this->debugEolMsg = (BrunoNatali\Tools\SystemInteraction::isCli() ? PHP_EOL : "<br>");   
+        $this->outSystemEolMsg = (BrunoNatali\Tools\SystemInteraction::isCli() ? PHP_EOL : "<br>");   
         $this->appConfigure($config);
     }
 
@@ -27,28 +27,28 @@ class Debug implements DebugInterface
             $name = strtoupper(trim($name));
             $value = trim($value);
 			switch($name){
-                case "DEBUGENABLED":
+                case "OUTSYSTEMENABLED":
                     if (!is_bool($value)) throw new Exception( "Configuration '$name' must be boolean.");
-                    $this->debugEnabled = $value;
+                    $this->outSystemEnabled = $value;
                     break;
-                case "DEBUGLEVEL":
+                case "OUTSYSTEMLEVEL":
                     if (!is_int($value)) throw new Exception( "Configuration '$name' must be integer.");
-                    $this->debugLevel = $value;
+                    $this->outSystemLevel = $value;
                     break;
-                case "DEBUGEOL":
+                case "OUTSYSTEMEOL":
                     if (!is_bool($value)) throw new Exception( "Configuration '$name' must be boolean.");
-                    $this->debugEol = $value;
+                    $this->outSystemEol = $value;
                     break;
-                case "DEBUGEOLMSG":
+                case "OUTSYSTEMEOLMSG":
                     if (!is_string($value)) throw new Exception( "Configuration '$name' must be string.");
-                    $this->debugEolMsg = $value;
+                    $this->outSystemEolMsg = $value;
                     break;
-                case "DEBUGNAME":
+                case "OUTSYSTEMNAME":
                     if (!is_array($value) && !is_string($value)) throw new Exception( "Configuration '$name' must be string or array of strings.");
                     if (is_array($value)) {
-                        $this->debugName = '[' . implode('][', $value) . ']'; // This will help trace calls
+                        $this->outSystemName = '[' . implode('][', $value) . ']'; // This will help trace calls
                     } else {
-                        $this->debugName = "[$value]";
+                        $this->outSystemName = "[$value]";
                     }
                     break;
             }
@@ -57,35 +57,35 @@ class Debug implements DebugInterface
 
     Public function enable()
     {
-        $this->debugEnabled = true;
+        $this->outSystemEnabled = true;
     }
 
     Public function disable()
     {
-        $this->debugEnabled = false;
+        $this->outSystemEnabled = false;
     }
 
     Public function enableEol()
     {
-        $this->debugEol = true;
+        $this->outSystemEol = true;
     }
 
     Public function disableEol()
     {
-        $this->debugEol = false;
+        $this->outSystemEol = false;
     }
 
     Public function setPreferedEol($eolMsg = null)
     {
-        $this->debugEolMsg = $eolMsg;
+        $this->outSystemEolMsg = $eolMsg;
     }
 
     Public function stdout(...$data): bool
     {
-        if (!$this->debugEnabled) return;
+        if (!$this->outSystemEnabled) return;
 
         $msg = null;
-        $eol = $this->debugEol;
+        $eol = $this->outSystemEol;
         $level = $this->defaultLevel;
         foreach ($data as $param) {
             if (is_string($param)) { // Message 
@@ -98,10 +98,10 @@ class Debug implements DebugInterface
         }
 
         if ($msg === null) return false;
-        if ($level < $this->debugLevel) return false;
+        if ($level < $this->outSystemLevel) return false;
 
-        if ($this->lastMsgHasEol) $msg = "[" . DATE("y-m-d H:i:s") . "]$debugName " . $msg; // input Time Stamp at beginning if last msg had LF
-        if ($eol) $msg .= $this->debugEolMsg;
+        if ($this->lastMsgHasEol) $msg = "[" . DATE("y-m-d H:i:s") . "]$outSystemName " . $msg; // input Time Stamp at beginning if last msg had LF
+        if ($eol) $msg .= $this->outSystemEolMsg;
         echo $msg;
 
         $this->lastMsgHasEol = $eol;
@@ -128,27 +128,27 @@ class Debug implements DebugInterface
 
         if ($msg === null) return false;
 
-        if ($timeStamp !== 0) $msg = "[" . DATE("y-m-d H:i:s") . "]$debugName " . $msg;
+        if ($timeStamp !== 0) $msg = "[" . DATE("y-m-d H:i:s") . "]$outSystemName " . $msg;
         echo $msg . ($eol ? $eol : '');
         return true;
     }
 
     Public static function helpHandleAppName(array $receivedConfig, array $myConfig): array
     {
-        if (!isset($myConfig["debugName"]) || !isset($receivedConfig["debugName"])) {
+        if (!isset($myConfig["outSystemName"]) || !isset($receivedConfig["outSystemName"])) {
             return array_merge($receivedConfig, $myConfig);
         }
         
-        if (is_array($receivedConfig["debugName"])) {
-            $receivedConfig["debugName"][] = $myConfig["debugName"];
+        if (is_array($receivedConfig["outSystemName"])) {
+            $receivedConfig["outSystemName"][] = $myConfig["outSystemName"];
         } else {
-            $receivedConfig["debugName"] = [
-                $receivedConfig["debugName"],
-                $myConfig["debugName"]
+            $receivedConfig["outSystemName"] = [
+                $receivedConfig["outSystemName"],
+                $myConfig["outSystemName"]
             ]
         }
 
-        unset($myConfig["debugName"]); // Just for ensurance
+        unset($myConfig["outSystemName"]); // Just for ensurance
         return array_merge($receivedConfig, $myConfig);
     }
 }
