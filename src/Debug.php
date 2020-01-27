@@ -2,55 +2,90 @@
 
 namespace BrunoNatali\Tools;
 
-use React\EventLoop\LoopInterface;
+use React\EventLoop\LoopInterface; // LoopInterface will be used to save log file using debug
 
 class Debug implements DebugInterface
 {
-    Private $enabled = true;
-    Private $level = self::LEVEL_ALL; // Current debug level
+    Private $debugEnabled = false;
+    Private $debugLevel = self::LEVEL_ALL; // Current debug level
+    Private $debugEol = true; // Put line ending 
+    Private $debugEolMsg = null; // Eol to append
+    Private $debugName = "NoName"; // Name of Class / Function / App that called Debug
     Private $defaultLevel = self::LEVEL_ALL; // Default level to be used on msg with not explicit level
-    Private $eol = true; // Put line ending 
-    Private $eolMsg = null; // Eol to append
     Private $lastMsgHasEol = true;
 
     //function __construct(array $config = [], LoopInterface &$loop = null)
     function __construct(array $config = [])
     {
-        foreach ($config as $key => $value) 
-            if (isset($this->$key)) $this->$key = $this->$value
+        $this->debugEolMsg = (BrunoNatali\Tools\SystemInteraction::isCli() ? PHP_EOL : "<br>");   
+        $this->appConfigure($config);
+    }
+
+    Private function appConfigure(array $config): void
+    {
+        foreach($config as $name => $value){
+            $name = strtoupper(trim($name));
+            $value = trim($value);
+			switch($name){
+                case "DEBUGENABLED":
+                    if (!is_bool($value)) throw new Exception( "Configuration '$name' must be boolean.");
+                    $this->debugEnabled = $value;
+                    break;
+                case "DEBUGLEVEL":
+                    if (!is_int($value)) throw new Exception( "Configuration '$name' must be integer.");
+                    $this->debugLevel = $value;
+                    break;
+                case "DEBUGEOL":
+                    if (!is_bool($value)) throw new Exception( "Configuration '$name' must be boolean.");
+                    $this->debugEol = $value;
+                    break;
+                case "DEBUGEOLMSG":
+                    if (!is_string($value)) throw new Exception( "Configuration '$name' must be string.");
+                    $this->debugEolMsg = $value;
+                    break;
+                case "DEBUGNAME":
+                    if (!is_array($value) && !is_string($value)) throw new Exception( "Configuration '$name' must be string or array of strings.");
+                    if (is_array($value)) {
+                        $this->debugName = '[' . implode('][', $value) . ']'; // This will help trace calls
+                    } else {
+                        $this->debugName = "[$value]";
+                    }
+                    break;
+            }
+        }
     }
 
     Public function enable()
     {
-        $this->enabled = true;
+        $this->debugEnabled = true;
     }
 
     Public function disable()
     {
-        $this->enabled = false;
+        $this->debugEnabled = false;
     }
 
     Public function enableEol()
     {
-        $this->eol = true;
+        $this->debugEol = true;
     }
 
     Public function disableEol()
     {
-        $this->eol = false;
+        $this->debugEol = false;
     }
 
     Public function setPreferedEol($eolMsg = null)
     {
-        $this->eolMsg = $eolMsg;
+        $this->debugEolMsg = $eolMsg;
     }
 
     Public function stdout(...$data): bool
     {
-        if (!$this->enabled) return;
+        if (!$this->debugEnabled) return;
 
         $msg = null;
-        $eol = $this->eol;
+        $eol = $this->debugEol;
         $level = $this->defaultLevel;
         foreach ($data as $param) {
             if (is_string($param)) { // Message 
@@ -63,10 +98,10 @@ class Debug implements DebugInterface
         }
 
         if ($msg === null) return false;
-        if ($level < $this->level) return false;
+        if ($level < $this->debugLevel) return false;
 
-        if ($this->lastMsgHasEol) $msg = "[" . DATE("y-m-d H:i:s") . "] " . $msg; // input Time Stamp at beginning if last msg had LF
-        if ($eol) $msg .= ($this->eolMsg ? $this->eolMsg : PHP_EOL);
+        if ($this->lastMsgHasEol) $msg = "[" . DATE("y-m-d H:i:s") . "]$debugName " . $msg; // input Time Stamp at beginning if last msg had LF
+        if ($eol) $msg .= $this->debugEolMsg;
         echo $msg;
 
         $this->lastMsgHasEol = $eol;
@@ -76,7 +111,7 @@ class Debug implements DebugInterface
     Public static function dstdout(...$data): bool
     {
         $msg = null;
-        $eol = PHP_EOL;
+        $eol = (BrunoNatali\Tools\SystemInteraction::isCli() ? PHP_EOL : "<br>");
         $timeStamp = 1;
         foreach ($data as $param) {
             if (is_string($param)) { // Message 
@@ -93,9 +128,28 @@ class Debug implements DebugInterface
 
         if ($msg === null) return false;
 
-        if ($timeStamp !== 0) $msg = "[" . DATE("y-m-d H:i:s") . "] " . $msg;
+        if ($timeStamp !== 0) $msg = "[" . DATE("y-m-d H:i:s") . "]$debugName " . $msg;
         echo $msg . ($eol ? $eol : '');
         return true;
+    }
+
+    Public static function helpHandleAppName(array $receivedConfig, array $myConfig): array
+    {
+        if (!isset($myConfig["debugName"]) || !isset($receivedConfig["debugName"])) {
+            return array_merge($receivedConfig, $myConfig);
+        }
+        
+        if (is_array($receivedConfig["debugName"])) {
+            $receivedConfig["debugName"][] = $myConfig["debugName"];
+        } else {
+            $receivedConfig["debugName"] = [
+                $receivedConfig["debugName"],
+                $myConfig["debugName"]
+            ]
+        }
+
+        unset($myConfig["debugName"]); // Just for ensurance
+        return array_merge($receivedConfig, $myConfig);
     }
 }
 ?>
