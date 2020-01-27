@@ -65,12 +65,36 @@ class Debug implements DebugInterface
         if ($msg === null) return false;
         if ($level < $this->level) return false;
 
-
         if ($this->lastMsgHasEol) $msg = "[" . DATE("y-m-d H:i:s") . "] " . $msg; // input Time Stamp at beginning if last msg had LF
         if ($eol) $msg .= ($this->eolMsg ? $this->eolMsg : PHP_EOL);
         echo $msg;
 
         $this->lastMsgHasEol = $eol;
+        return true;
+    }
+
+    Public static function dstdout(...$data): bool
+    {
+        $msg = null;
+        $eol = PHP_EOL;
+        $timeStamp = 1;
+        foreach ($data as $param) {
+            if (is_string($param)) { // Message 
+                $msg = $param;
+            } else if (is_bool($param) && $param === false) { // line end disable
+                $eol = false;
+            } else if (is_int($param)) { // change debug level for current message
+                $timeStamp = $param;
+            } else if (is_array($param)) { // Custom settings
+                if (isset($param['eol'])) 
+                    $eol = $param['eol']; // Could set a different EOL text / char
+            }
+        }
+
+        if ($msg === null) return false;
+
+        if ($timeStamp !== 0) $msg = "[" . DATE("y-m-d H:i:s") . "] " . $msg;
+        echo $msg . ($eol ? $eol : '');
         return true;
     }
 }
