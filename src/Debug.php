@@ -2,16 +2,16 @@
 
 namespace BrunoNatali\Tools;
 
-use React\EventLoop\LoopInterface; // LoopInterface will be used to save log file using debug
+//use React\EventLoop\LoopInterface; // LoopInterface will be used to save log file using debug
 
 class Debug implements DebugInterface
 {
-    Private $debugEnabled = false;
-    Private $debugLevel = self::LEVEL_ALL; // Current debug level
-    Private $debugEol = true; // Put line ending 
-    Private $debugEolMsg = null; // Eol to append
-    Private $debugName = "NoName"; // Name of Class / Function / App that called Debug
-    Private $defaultLevel = self::LEVEL_ALL; // Default level to be used on msg with not explicit level
+    Private $debugEnabled = self::DEFAULT_DEBUG_ENABLED;
+    Private $debugLevel = self::LEVEL_ALL; // Construct debug with all levels enabled
+    Private $debugEol = self::DEFAULT_DEBUG_EOL; 
+    Private $debugEolMsg = null; // Eol to append - Auto configure at construct or direct call 
+    Private $debugName = self::DEFAULT_DEBUG_NAME; 
+    Private $defaultLevel = self::DEFAULT_DEBUG_LEVEL; 
     Private $lastMsgHasEol = true;
 
     //function __construct(array $config = [], LoopInterface &$loop = null)
