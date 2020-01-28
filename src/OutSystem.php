@@ -15,13 +15,13 @@ class OutSystem implements DebugInterface
     Private $lastMsgHasEol = true;
 
     //function __construct(array $config = [], LoopInterface &$loop = null)
-    function __construct(array $config = [])
+    function __construct(array &$config = [])
     {
         $this->outSystemEolMsg = (BrunoNatali\Tools\SystemInteraction::isCli() ? PHP_EOL : "<br>");   
         $this->appConfigure($config);
     }
 
-    Private function appConfigure(array $config): void
+    Private function appConfigure(array &$config): void
     {
         foreach($config as $name => $value){
             $name = strtoupper(trim($name));
@@ -30,18 +30,22 @@ class OutSystem implements DebugInterface
                 case "OUTSYSTEMENABLED":
                     if (!is_bool($value)) throw new Exception( "Configuration '$name' must be boolean.");
                     $this->outSystemEnabled = $value;
+                    unset($config[$name]);
                     break;
                 case "OUTSYSTEMLEVEL":
                     if (!is_int($value)) throw new Exception( "Configuration '$name' must be integer.");
                     $this->outSystemLevel = $value;
+                    unset($config[$name]);
                     break;
                 case "OUTSYSTEMEOL":
                     if (!is_bool($value)) throw new Exception( "Configuration '$name' must be boolean.");
                     $this->outSystemEol = $value;
+                    unset($config[$name]);
                     break;
                 case "OUTSYSTEMEOLMSG":
                     if (!is_string($value)) throw new Exception( "Configuration '$name' must be string.");
                     $this->outSystemEolMsg = $value;
+                    unset($config[$name]);
                     break;
                 case "OUTSYSTEMNAME":
                     if (!is_array($value) && !is_string($value)) throw new Exception( "Configuration '$name' must be string or array of strings.");
@@ -50,6 +54,7 @@ class OutSystem implements DebugInterface
                     } else {
                         $this->outSystemName = "[$value]";
                     }
+                    unset($config[$name]);
                     break;
             }
         }
