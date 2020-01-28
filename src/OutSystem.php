@@ -19,6 +19,12 @@ class OutSystem implements OutSystemInterface
     {
         $this->outSystemEolMsg = (SystemInteraction::isCli() ? PHP_EOL : "<br>");   
         $this->appConfigure($config);
+
+        // Debug class initialization
+        $this->dstdout(
+            Encapsulation::formatClassConfigs4InitializationPrint($config),
+            ["outSystemName" => "OutSystem"]
+        );
     }
 
     Private function appConfigure(array &$config): void
@@ -118,7 +124,7 @@ class OutSystem implements OutSystemInterface
         $msg = null;
         $eol = (SystemInteraction::isCli() ? PHP_EOL : "<br>");
         $timeStamp = 1;
-        $outSystemName = self::DEFAULT_OUT_SYSTEM_NAME;
+        $outSystemName = "[" . self::DEFAULT_OUT_SYSTEM_NAME . "]";
         foreach ($data as $param) {
             if (is_string($param)) { // Message 
                 $msg = $param;

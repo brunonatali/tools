@@ -2,8 +2,6 @@
 
 namespace BrunoNatali\Tools;
 
-use BrunoNatali\Tools\SysInfo;
-use BrunoNatali\Tools\OutSystem;
 use React\EventLoop\LoopInterface;
 
 class SystemInteraction implements SystemInteractionInterface
@@ -46,21 +44,28 @@ class SystemInteraction implements SystemInteractionInterface
 			$this->system = self::SYSTEM['UNIX'];
 		}
 
-        $userConfig = BrunoNatali\Tools\OutSystem::helpHandleAppName( 
+        $userConfig = OutSystem::helpHandleAppName( 
             $userConfig,
             ["outSystemName" => "SystemInteraction"]
         );
         $this->outSystem = new OutSystem($userConfig);
 
-        if (empty($userConfig)) {
+        if (empty($userConfig) || !isset($userConfig['systemRunFolder'])) {
             if ($this->system === self::SYSTEM['WIN']) {
                 $this->sysRunFolder = self::SYSTEM_RUN_FOLDER_WIN;
             } else {
                 $this->sysRunFolder = self::SYSTEM_RUN_FOLDER_UNIX;
             }
-        } else {
-            $this->sysRunFolder = $userConfig;
+        } else if (isset($userConfig['systemRunFolder'])) {
+            if (!is_array($userConfig['systemRunFolder']))
+                throw new \Exception("'systemRunFolder' must be array of (string) folders.");
+            $this->sysRunFolder = $userConfig['systemRunFolder'];
         }
+
+        // Debug class initialization
+        $outSystem->stdout(
+            Encapsulation::formatClassConfigs4InitializationPrint($configs)
+        );
     }
 
     Public function setAppInitiated(string $appName, bool $regShdn = true): bool
@@ -114,7 +119,10 @@ class SystemInteraction implements SystemInteractionInterface
         $this->systemIsSHDN = true;
         $this->outSystem->stdout("App actively aborted.", OutSystem::LEVEL_NOTICE);
 
-        foreach ($this->functionsOnAborted as $func) $func();
+        foreach ($this->functionsOnAborted as $index => $func) {
+            $this->outSystem->stdout("Executing SHDN function: $index.", OutSystem::LEVEL_NOTICE);
+            $func();
+        }
         exit; // Exit must be called to close script, otherwise script will block system shutdown.
     }
 
