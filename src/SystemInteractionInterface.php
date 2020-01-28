@@ -8,7 +8,7 @@ interface SystemInteractionInterface
     Const SYSTEM_RUN_FOLDER_WIN = ['%TEMP%/systema/'];
 
     Const ERROR_OK = 0x00;  // No error
-    Const ERROR_COULD_NOT_COMPLETE_PARSE = 0x01 // Some parse coud not be completed or code decide to abort parse
+    Const ERROR_COULD_NOT_COMPLETE_PARSE = 0x01; // Some parse coud not be completed or code decide to abort parse
     Const ERROR_SYSTEM_NOT_SUPPORTED = 0x02; // Host system not support this function
     Const ERROR_BUSY_WITH_SAME_REQUEST = 0x03; // Resquested function already called and could not be called again
 

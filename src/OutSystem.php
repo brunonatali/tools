@@ -4,7 +4,7 @@ namespace BrunoNatali\Tools;
 
 //use React\EventLoop\LoopInterface; // LoopInterface will be used to save log file using debug
 
-class OutSystem implements DebugInterface
+class OutSystem implements OutSystemInterface
 {
     Private $outSystemEnabled = self::DEFAULT_OUT_SYSTEM_ENABLED;
     Private $outSystemLevel = self::LEVEL_ALL; // Construct debug with all levels enabled
@@ -17,7 +17,7 @@ class OutSystem implements DebugInterface
     //function __construct(array $config = [], LoopInterface &$loop = null)
     function __construct(array &$config = [])
     {
-        $this->outSystemEolMsg = (BrunoNatali\Tools\SystemInteraction::isCli() ? PHP_EOL : "<br>");   
+        $this->outSystemEolMsg = (SystemInteraction::isCli() ? PHP_EOL : "<br>");   
         $this->appConfigure($config);
     }
 
@@ -25,7 +25,7 @@ class OutSystem implements DebugInterface
     {
         foreach($config as $name => $value){
             $name = strtoupper(trim($name));
-            $value = trim($value);
+            if (is_string($value)) $value = trim($value);
 			switch($name){
                 case "OUTSYSTEMENABLED":
                     if (!is_bool($value)) throw new Exception( "Configuration '$name' must be boolean.");
@@ -87,7 +87,7 @@ class OutSystem implements DebugInterface
 
     Public function stdout(...$data): bool
     {
-        if (!$this->outSystemEnabled) return;
+        if (!$this->outSystemEnabled) return false;
 
         $msg = null;
         $eol = $this->outSystemEol;
@@ -105,7 +105,7 @@ class OutSystem implements DebugInterface
         if ($msg === null) return false;
         if ($level < $this->outSystemLevel) return false;
 
-        if ($this->lastMsgHasEol) $msg = "[" . DATE("y-m-d H:i:s") . "]$outSystemName " . $msg; // input Time Stamp at beginning if last msg had LF
+        if ($this->lastMsgHasEol) $msg = "[" . DATE("y-m-d H:i:s") . "]$this->outSystemName " . $msg; // input Time Stamp at beginning if last msg had LF
         if ($eol) $msg .= $this->outSystemEolMsg;
         echo $msg;
 
@@ -116,8 +116,9 @@ class OutSystem implements DebugInterface
     Public static function dstdout(...$data): bool
     {
         $msg = null;
-        $eol = (BrunoNatali\Tools\SystemInteraction::isCli() ? PHP_EOL : "<br>");
+        $eol = (SystemInteraction::isCli() ? PHP_EOL : "<br>");
         $timeStamp = 1;
+        $outSystemName = self::DEFAULT_OUT_SYSTEM_NAME;
         foreach ($data as $param) {
             if (is_string($param)) { // Message 
                 $msg = $param;
@@ -128,6 +129,13 @@ class OutSystem implements DebugInterface
             } else if (is_array($param)) { // Custom settings
                 if (isset($param['eol'])) 
                     $eol = $param['eol']; // Could set a different EOL text / char
+                if (isset($param['outSystemName'])) {
+                    if (is_array($param['outSystemName'])) {
+                        $outSystemName = '[' . implode('][', $param['outSystemName']) . ']'; // This will help trace calls
+                    } else {
+                        $outSystemName = "[" . $param['outSystemName'] . "]";
+                    }
+                }
             }
         }
 
@@ -150,7 +158,7 @@ class OutSystem implements DebugInterface
             $receivedConfig["outSystemName"] = [
                 $receivedConfig["outSystemName"],
                 $myConfig["outSystemName"]
-            ]
+            ];
         }
 
         unset($myConfig["outSystemName"]); // Just for ensurance

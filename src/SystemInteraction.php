@@ -223,7 +223,7 @@ class SystemInteraction implements SystemInteractionInterface
         if (is_array($procRunningNow)) {
             // Need to look this case, for now will use generic call
             exec("php $cmdArgs > /dev/null 2>&1 &");
-            $return self::ERROR_COULD_NOT_COMPLETE_PARSE;
+            $return = self::ERROR_COULD_NOT_COMPLETE_PARSE;
         } else {
             exec("$procRunningNow $cmdArgs > /dev/null 2>&1 &");
         }
