@@ -3,7 +3,8 @@
 namespace BrunoNatali\Tools;
 
 use BrunoNatali\Tools\SysInfo;
-use BrunoNatali\Tools\Debug;
+use BrunoNatali\Tools\OutSystem;
+use React\EventLoop\LoopInterface;
 
 class SystemInteraction implements SystemInteractionInterface
 {
@@ -14,28 +15,52 @@ class SystemInteraction implements SystemInteractionInterface
     Private $functionsOnAborted = [];
 	Private $myAppName;
     Private $myPid;
-    Private $loop;
-    Private $debug;
+    Private $loop = null;
+    Protected $outSystem;
 
-    function __construct(array $runFolder = [], LoopInterface &$loop = null)
+    // array $runFolder = [], LoopInterface &$loop = null
+    function __construct(...$configs)
     {
+        $userConfig = [];
+        foreach ($configs as $param) {
+            if (is_array($param)) {
+                $userConfig += $param;
+            } else if (is_object($param)) {
+                if ($param instanceof LoopInterface) {
+                    if ($this->loop === null) {
+                        $this->loop = &$param;
+                    } else {
+                        throw new Exception( "Accept only one LoopInterface.");
+                    }
+                }
+            } else {
+                throw new Exception( "Wrong parameter. Accept only Array, LoopInterface.");
+            }
+        }
+        if ($this->loop === null) throw new Exception( "Need to provide LoopInterface.");
+
+
 		if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
 			$this->system = self::SYSTEM['WIN'];
 		} else {
 			$this->system = self::SYSTEM['UNIX'];
 		}
 
-        if (empty($runFolder)) {
+        $userConfig = BrunoNatali\Tools\OutSystem::helpHandleAppName( 
+            $userConfig,
+            ["outSystemName" => "SystemInteraction"]
+        );
+        $this->outSystem = new OutSystem($userConfig);
+
+        if (empty($userConfig)) {
             if ($this->system === self::SYSTEM['WIN']) {
                 $this->sysRunFolder = self::SYSTEM_RUN_FOLDER_WIN;
             } else {
                 $this->sysRunFolder = self::SYSTEM_RUN_FOLDER_UNIX;
             }
+        } else {
+            $this->sysRunFolder = $userConfig;
         }
-        else $this->sysRunFolder = $runFolder;
-
-        $this->loop = &$loop;
-        $this->debug = new Debug();
     }
 
     Public function setAppInitiated(string $appName, bool $regShdn = true): bool
@@ -58,20 +83,20 @@ class SystemInteraction implements SystemInteractionInterface
         }
 
         if (!$regShdn) {
-            $this->debug->stdout("App initiated.", Debug::LEVEL_NOTICE);
+            $this->outSystem->stdout("App initiated.", OutSystem::LEVEL_NOTICE);
             return true;
         }
 
         $this->sysRegisterShdn = $regShdn;
         $this->setFunctionOnAppAborted(function () {
-            $this->debug->stdout("Called app abort / close. Starting shutdown.", Debug::LEVEL_NOTICE);
+            $this->outSystem->stdout("Called app abort / close. Starting shutdown.", OutSystem::LEVEL_NOTICE);
             $this->removePidFile();
         });
 
         register_shutdown_function([$this, 'setAborted']);
 
 		if ($this->system !== self::SYSTEM['UNIX']) {
-            $this->debug->stdout("App initiated.", Debug::LEVEL_NOTICE);
+            $this->outSystem->stdout("App initiated.", OutSystem::LEVEL_NOTICE);
             return true;
         }
 
@@ -79,7 +104,7 @@ class SystemInteraction implements SystemInteractionInterface
     	pcntl_signal(SIGHUP,  [$this, 'setAborted']);
     	pcntl_signal(SIGINT,  [$this, 'setAborted']);
 
-        $this->debug->stdout("App initiated.", Debug::LEVEL_NOTICE);
+        $this->outSystem->stdout("App initiated.", OutSystem::LEVEL_NOTICE);
         return true;
     }
 
@@ -87,7 +112,7 @@ class SystemInteraction implements SystemInteractionInterface
     {
         if ($this->systemIsSHDN) return;
         $this->systemIsSHDN = true;
-        $this->debug->stdout("App actively aborted.", Debug::LEVEL_NOTICE);
+        $this->outSystem->stdout("App actively aborted.", OutSystem::LEVEL_NOTICE);
 
         foreach ($this->functionsOnAborted as $func) $func();
         exit; // Exit must be called to close script, otherwise script will block system shutdown.
@@ -168,10 +193,12 @@ class SystemInteraction implements SystemInteractionInterface
 
     Public function restartApp(): int
     {
+        $this->outSystem->stdout("Restarting App.", OutSystem::LEVEL_NOTICE);
         // Just work in UNIX now
         if ($this->system !== self::SYSTEM['UNIX']) return self::ERROR_SYSTEM_NOT_SUPPORTED;
 
-        if ($this->loop === null)
+        // check if is needed
+        if ($this->loop === null) 
             throw new \Exception('To use this function provide a LoopInterface in construction.');
 
         if ($this->getAppRequestRestart()) return self::ERROR_BUSY_WITH_SAME_REQUEST;
@@ -204,5 +231,10 @@ class SystemInteraction implements SystemInteractionInterface
         $this->setFunctionOnAppAborted($this->removePidFile(true));
         $this->setAborted();
         return $return;
+    }
+
+    Public static function isCli(): bool
+    {
+        return (php_sapi_name() === 'cli');
     }
 }

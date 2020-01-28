@@ -32,5 +32,7 @@ interface SystemInteractionInterface
 	Public function removePidFile();
 
     Public function restartApp();
+
+    Public static function isCli(): bool;
 }
 ?>
