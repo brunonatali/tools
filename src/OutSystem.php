@@ -26,35 +26,40 @@ class OutSystem implements OutSystemInterface
             ["outSystemName" => "OutSystem"]
         );
     }
+    
+    public function __toString()
+    {
+        return 'OutSystem';
+    }
 
     Private function appConfigure(array &$config): void
     {
         foreach($config as $name => $value){
-            $name = strtoupper(trim($name));
+            $name = (is_string($name) ? strtoupper(trim($name)) : $name);
             if (is_string($value)) $value = trim($value);
-			switch($name){
-                case "OUTSYSTEMENABLED":
-                    if (!is_bool($value)) throw new Exception( "Configuration '$name' must be boolean.");
+			switch(true){
+                case ($name === "OUTSYSTEMENABLED"):
+                    if (!is_bool($value)) throw new \Exception( "Configuration '$name' must be boolean.");
                     $this->outSystemEnabled = $value;
                     unset($config[$name]);
                     break;
-                case "OUTSYSTEMLEVEL":
-                    if (!is_int($value)) throw new Exception( "Configuration '$name' must be integer.");
+                case ($name === "OUTSYSTEMLEVEL"):
+                    if (!is_int($value)) throw new \Exception( "Configuration '$name' must be integer.");
                     $this->outSystemLevel = $value;
                     unset($config[$name]);
                     break;
-                case "OUTSYSTEMEOL":
-                    if (!is_bool($value)) throw new Exception( "Configuration '$name' must be boolean.");
+                case ($name === "OUTSYSTEMEOL"):
+                    if (!is_bool($value)) throw new \Exception( "Configuration '$name' must be boolean.");
                     $this->outSystemEol = $value;
                     unset($config[$name]);
                     break;
-                case "OUTSYSTEMEOLMSG":
-                    if (!is_string($value)) throw new Exception( "Configuration '$name' must be string.");
+                case ($name === "OUTSYSTEMEOLMSG"):
+                    if (!is_string($value)) throw new \Exception( "Configuration '$name' must be string.");
                     $this->outSystemEolMsg = $value;
                     unset($config[$name]);
                     break;
-                case "OUTSYSTEMNAME":
-                    if (!is_array($value) && !is_string($value)) throw new Exception( "Configuration '$name' must be string or array of strings.");
+                case ($name === "OUTSYSTEMNAME"):
+                    if (!is_array($value) && !is_string($value)) throw new \Exception( "Configuration '$name' must be string or array of strings.");
                     if (is_array($value)) {
                         $this->outSystemName = '[' . implode('][', $value) . ']'; // This will help trace calls
                     } else {

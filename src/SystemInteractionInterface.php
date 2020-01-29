@@ -17,6 +17,8 @@ interface SystemInteractionInterface
         'WIN' => 0x02
     ];
 
+    Public function __toString();
+
     Public function setAppInitiated(string $appName, bool $regShdn = true);
 
     Public function setAborted();

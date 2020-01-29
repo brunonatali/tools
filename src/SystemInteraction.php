@@ -63,9 +63,14 @@ class SystemInteraction implements SystemInteractionInterface
         }
 
         // Debug class initialization
-        $outSystem->stdout(
+        $this->outSystem->stdout(
             Encapsulation::formatClassConfigs4InitializationPrint($configs)
         );
+    }
+    
+    public function __toString()
+    {
+        return 'SystemInteraction';
     }
 
     Public function setAppInitiated(string $appName, bool $regShdn = true): bool

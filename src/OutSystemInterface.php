@@ -14,6 +14,7 @@ interface OutSystemInterface
     Const DEFAULT_OUT_SYSTEM_NAME = "NoName";   // Default name for Class / Function / App that called Debug
     Const DEFAULT_OUT_SYSTEM_LEVEL = self::LEVEL_ALL; // Default level to be used on msg with not explicit level
 
+    Public function __toString();
     Public function enable();
     Public function disable();
     Public function enableEol();
