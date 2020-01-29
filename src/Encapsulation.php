@@ -9,12 +9,20 @@ class Encapsulation
     {
         if (!empty($args)) {
             $compose = "Started with configs:";
-            foreach ($compose as $key => $value) {
+            foreach ($args as $key => $value) {
                 $compose .= PHP_EOL . "\t";
-                if (is_int($key)) {
-                    $compose .= (is_array($value) ? implode(';', $value) : (is_bool($value) ? ($value ? 'true' : 'false') : $value));
+                if (is_int($key)) $compose .= "'$key' => ";
+                if (is_array($value)) {
+                    $compose .= UsefulFunction::implodeRecursive($value);
+                } else if (is_bool($value)) {
+                    $compose .= ($value ? 'true' : 'false');
+                } else if (is_object($value)) {
+                    if (method_exists($value, '__toString'))
+                        $compose .= (string)$value;
+                    else 
+                        $compose .= get_class($value);
                 } else {
-                    $compose .= "'$key' => " . (is_array($value) ? implode(';', $value) : (is_bool($value) ? ($value ? 'true' : 'false') : $value));
+                    $compose .= $value;
                 }
             }
         } else {
