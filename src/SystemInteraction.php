@@ -93,14 +93,15 @@ class SystemInteraction implements SystemInteractionInterface
         }
 
         if (!$regShdn) {
-            $this->outSystem->stdout("App initiated.", OutSystem::LEVEL_NOTICE);
+            $this->outSystem->stdout("App initiated with no SHDN handler.", OutSystem::LEVEL_NOTICE);
             return true;
         }
 
         $this->sysRegisterShdn = $regShdn;
         $this->setFunctionOnAppAborted(function () {
             $this->outSystem->stdout("Called app abort / close. Starting shutdown.", OutSystem::LEVEL_NOTICE);
-            $this->removePidFile();
+            if ($this->removePidFile()) $this->outSystem->stdout("Cleanup OK.", OutSystem::LEVEL_NOTICE);
+			else $this->outSystem->stdout("Error cleaning PID.", OutSystem::LEVEL_NOTICE);
         });
 
         register_shutdown_function([$this, 'setAborted']);
@@ -136,7 +137,10 @@ class SystemInteraction implements SystemInteractionInterface
         if ($appName === null) $appName = $this->myAppName;
 
         foreach ($this->sysRunFolder as $sysRunFolder)
-            if(file_exists($sysRunFolder . $appName . '.pid')) return true;
+            if(file_exists($sysRunFolder . $appName . '.pid')) {
+				if (!$this->removePidFile()) return true; // Try to remove pid file based on running process
+				else $this->outSystem->stdout("Cleaning last PID.", OutSystem::LEVEL_NOTICE);
+			}
 
         return false;
     }
