@@ -10,8 +10,7 @@ class Encapsulation
         if (!empty($args)) {
             $compose = "Started with configs:";
             foreach ($args as $key => $value) {
-                $compose .= PHP_EOL . "\t";
-                if (is_int($key)) $compose .= "'$key' => ";
+                $compose .= PHP_EOL . "\t$key => ";
                 if (is_array($value)) {
                     $compose .= UsefulFunction::implodeRecursive($value);
                 } else if (is_bool($value)) {
