@@ -10,6 +10,7 @@ class OutSystem implements OutSystemInterface
     Private $outSystemLevel = self::LEVEL_ALL; // Construct debug with all levels enabled
     Private $outSystemEol = self::DEFAULT_OUT_SYSTEM_EOL; 
     Private $outSystemEolMsg = null; // Eol to append - Auto configure at construct or direct call 
+    Private $outSystemDebug = false;
     Private $outSystemName = self::DEFAULT_OUT_SYSTEM_NAME; 
     Private $defaultLevel = self::DEFAULT_OUT_SYSTEM_LEVEL; 
     Private $lastMsgHasEol = true;
@@ -21,10 +22,11 @@ class OutSystem implements OutSystemInterface
         $this->appConfigure($config);
 
         // Debug class initialization
-        $this->dstdout(
-            Encapsulation::formatClassConfigs4InitializationPrint($config),
-            ["outSystemName" => "OutSystem"]
-        );
+        if ($this->outSystemDebug)
+            $this->dstdout(
+                Encapsulation::formatClassConfigs4InitializationPrint($config),
+                ["outSystemName" => "OutSystem"]
+            );
     }
     
     public function __toString()
@@ -41,6 +43,11 @@ class OutSystem implements OutSystemInterface
                 case ($name === "OUTSYSTEMENABLED"):
                     if (!is_bool($value)) throw new \Exception( "Configuration '$name' must be boolean.");
                     $this->outSystemEnabled = $value;
+                    unset($config[$name]);
+                    break;
+                case ($name === "OUTSYSTEMDEBUG"):
+                    if (!is_bool($value)) throw new \Exception( "Configuration '$name' must be boolean.");
+                    $this->outSystemDebug = $value;
                     unset($config[$name]);
                     break;
                 case ($name === "OUTSYSTEMLEVEL"):
