@@ -2,6 +2,7 @@
 
 namespace BrunoNatali\Tools;
 
+use React\EventLoop\LoopInterface;
 
 class Scheduler
 {
@@ -17,7 +18,7 @@ class Scheduler
     * @input (non necessary) [callable] Function to be executed on error 
     * @input (non necessary) [bool] Infinite timer or not
     */
-    function __construct(React\EventLoop\LoopInterface &$loop, float $time = 0, callable $execFunction = null, ...$args)
+    function __construct(LoopInterface &$loop, float $time = 0, callable $execFunction = null, ...$args)
     {
         $this->loop = &$loop;
         $this->schedule($time, $execFunction, $args);
@@ -42,7 +43,7 @@ class Scheduler
         $listIndex = count($this->list);
         $this->list[$listIndex] = $this->loop->$loopType(
             $time, 
-            ($errorFunction === null ? $execFunction : function ($execFunction, $errorFunction) { if (!$execFunction) $errorFunction;})
+            ($errorFunction === null ? $execFunction : function () use ($execFunction, $errorFunction) { if ($execFunction() === false) $errorFunction();})
         );
 
         return $listIndex;
@@ -52,7 +53,7 @@ class Scheduler
     * @input Index of desired timer to be canceled or NULL to cancel all timers
     * @return true if could cancel a timer or if have no timers 
     */
-    Public function cancel($listIndex === null): bool
+    Public function cancel($listIndex = null): bool
     {
         if (is_int($listIndex) && isset($this->list[$listIndex])) {
             $this->loop->cancelTimer($this->list[$listIndex]);
