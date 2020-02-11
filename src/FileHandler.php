@@ -13,7 +13,7 @@ use React\Promise\Deferred;
 
 class FileHandler implements FileHandlerInterface
 {
-    Private static $loop = null;
+    Private $loop = null;
     Private $filesystem = null;
     Private $file = null;
     Private $adapter = null;
@@ -33,7 +33,7 @@ class FileHandler implements FileHandlerInterface
         try {
             $this->filesystem = Filesystem::create($this->loop);
         } catch (RuntimeException $e) {
-            echo "Could not use React\Filesystem due an error: " . $e->getMessage() . PHP_EOL;
+            echo "Could not use React\Filesystem due an error: " . $e->getMessage() . PHP_EOL; // Need to be better implemented
             exit;
         }
         
