@@ -10,7 +10,14 @@
 use BrunoNatali\Tools\FileHandler;
 use BrunoNatali\Tools\OutSystem;
 
-require __DIR__ . '/../vendor/autoload.php';
+// Include autoload
+try {
+	if (!@include_once(__DIR__ . '/../vendor/autoload.php'))
+		if (!@include_once(__DIR__ . '/../../../autoload.php')) // Case running directelly from examples folder
+			throw new Exception('Could not find autoload.php');
+} catch (Exception $e) {
+	echo $e->getMessage();
+}
 
 // Configuration
 $debugConfig = [

@@ -1,5 +1,9 @@
 <?php declare(strict_types=1);
 
+/**
+*   Just work on unix
+*/
+
 namespace BrunoNatali\Tools;
 
 use React\Stream\ReadableStreamInterface;
@@ -26,7 +30,13 @@ class FileHandler implements FileHandlerInterface
         $this->loop = &$loop;
         $this->path = $path;
 
-        $this->filesystem = Filesystem::create($this->loop);
+        try {
+            $this->filesystem = Filesystem::create($this->loop);
+        } catch (RuntimeException $e) {
+            echo "Could not use React\Filesystem due an error: " . $e->getMessage() . PHP_EOL;
+            exit;
+        }
+        
         $this->adapter = $this->filesystem->getAdapter();
         $this->file = $this->filesystem->file($this->path);
     }
@@ -35,11 +45,11 @@ class FileHandler implements FileHandlerInterface
     {
         $deferred = new Deferred();
         if ($loop === null && $this->loop === null) {
-            $deferred->reject(throw new Exception("LoopInterface could not be empty", 1));
+            $deferred->reject(new Exception("LoopInterface could not be empty", 1));
             return $deferred->promise();
         }
         if ($path === null && $this->path === null) {
-            $deferred->reject(throw new Exception("File path could not be empty", 1));
+            $deferred->reject(new Exception("File path could not be empty", 1));
             return $deferred->promise();
         }
 

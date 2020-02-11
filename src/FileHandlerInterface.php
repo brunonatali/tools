@@ -2,6 +2,8 @@
 
 namespace BrunoNatali\Tools;
 
+use React\EventLoop\LoopInterface;
+
 interface FileHandlerInterface
 {
     Public static function getContent(LoopInterface &$loop = null, string $path = null);
