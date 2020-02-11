@@ -116,7 +116,7 @@ class Queue
         $queueExecuteNode = $this->main->dequeue();
         if (is_callable($queueExecuteNode)) {
             $this->running = true;
-            $this->timer = $this->loop->addTimer(0.1, function () use ($queueExecuteNode, &$count){
+            $this->timer = $this->loop->futureTick(function () use ($queueExecuteNode, &$count){
                 $queueExecuteNode();
                 $this->running = false;
                 $this->timer = null;
