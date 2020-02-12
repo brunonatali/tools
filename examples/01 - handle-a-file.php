@@ -7,7 +7,7 @@
 *   Normally you can bypass "test..." functions.
 */
 
-use BrunoNatali\Tools\FileHandler;
+use BrunoNatali\Tools\File\FileHandler;
 use BrunoNatali\Tools\OutSystem;
 
 // Include autoload
@@ -31,23 +31,11 @@ $debug = new OutSystem($debugConfig);
 
 $debug->stdout("Start");
 
-$file = new FileHandler($loop, __FILE__); // Load this file into API
+$file = new FileHandler(__FILE__, $loop); // Load this file into API
 testConstruct($file);
 
-$fileContent = null;
-$file->getContent()->then(function ($content) use ($debug, &$fileContent, $file) {
-    $debug->stdout("Get this file content");
-    $fileContent = $content;
-    testContent($fileContent);
-    $fileContent = '';
-    getPartialContent();
-}, 
-function ($e) use ($debug) {
-    $debug->stdout("Error get this file content: " . $e->getMessage());
-});
-
-$debug->stdout("Get file content & generate a opened error");
-$fileContentB = '';
+$debug->stdout("Get file content in pakcages of 200 Bytes");
+$fileContent = '';
 getPartialContent();
 
 $loop->run();
@@ -70,7 +58,7 @@ function getPartialContent()
 function testConstruct($object): void
 {
     global $debug, $file;
-    if (is_object($object) && $object instanceof BrunoNatali\Tools\FileHandlerInterface) {
+    if (is_object($object) && $object instanceof BrunoNatali\Tools\File\FileHandlerInterface) {
         $debug->stdout("Object creation successfully");
     } else {
         $debug->stdout("Object created with wrong class: " . get_class($file));
