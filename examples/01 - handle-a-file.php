@@ -35,17 +35,19 @@ $file = new FileHandler($loop, __FILE__); // Load this file into API
 testConstruct($file);
 
 $fileContent = null;
-$file->getContent()->then(function ($content) use ($debug, &$fileContent) {
+$file->getContent()->then(function ($content) use ($debug, &$fileContent, $file) {
     $debug->stdout("Get this file content");
     $fileContent = $content;
     testContent($fileContent);
+    $fileContent = '';
+    getPartialContent();
 }, 
 function ($e) use ($debug) {
     $debug->stdout("Error get this file content: " . $e->getMessage());
 });
 
-$debug->stdout("Get file content in parts of 200 Bytes");
-$fileContent = '';
+$debug->stdout("Get file content & generate a opened error");
+$fileContentB = '';
 getPartialContent();
 
 $loop->run();

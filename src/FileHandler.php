@@ -59,7 +59,15 @@ class FileHandler implements FileHandlerInterface
             $this->file = $this->filesystem->file(($path === null ? $this->path : $path));
         }
 
-        return $this->file->getContents();
+        $me = &$this;
+        $this->file->getContents()->then(function ($content) use ($me, $deferred) {
+            $deferred->resolve($content);
+            $me->file->close();
+        }, function ($e) {
+            $deferred->reject($e);
+        });
+        
+        return $deferred->promise();
     }
 
     Public function getBytes(int $bytes)
@@ -74,8 +82,14 @@ class FileHandler implements FileHandlerInterface
                 $me->adapter->read($me->openFileAsStream(), $bytes, $me->getBytesStart)->then(function ($content) use ($me, $deferred, $bytes) {
                     $me->getBytesStart = $me->getBytesStart + $bytes;
                     $deferred->resolve($content);
+                }, function ($e) {
+                    $deferred->reject($e);
                 });
+            }, function ($e) {
+                $deferred->reject($e);
             });
+        }, function ($e) {
+            $deferred->reject($e);
         });
 
         return $deferred->promise();
@@ -87,7 +101,7 @@ class FileHandler implements FileHandlerInterface
         $me = &$this;
 
         if ($this->size === null || $forceCheck) {
-            $this->file->size()->then(function ($size) use ($me, $deferred, $bytes) {
+            $this->file->size()->then(function ($size) use ($me, $deferred) {
                 $me->size = $size;
                 $deferred->resolve($me->size);
             }, function ($e) {
@@ -161,6 +175,8 @@ class FileHandler implements FileHandlerInterface
             $this->file->open('r')->then(function (ReadableStreamInterface $stream) use ($me, $deferred) {
                 $me->fileOpened = $stream->getFiledescriptor();
                 $deferred->resolve($me->fileOpened);
+            }, function ($e) {
+                $deferred->reject($e);
             });
         }    
         return $deferred->promise();
