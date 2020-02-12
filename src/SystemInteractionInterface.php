@@ -2,7 +2,7 @@
 
 namespace BrunoNatali\Tools;
 
-interface SystemInteractionInterface extends SysInfoInterface
+interface SystemInteractionInterface extends ConstantsInterface
 {
     Const SYSTEM_RUN_FOLDER_UNIX = ['/run/systema/', '/var/run/systema/'];
     Const SYSTEM_RUN_FOLDER_WIN = ['%TEMP%/systema/'];

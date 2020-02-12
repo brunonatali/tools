@@ -2,10 +2,8 @@
 
 namespace BrunoNatali\Tools;
 
-interface SysInfoInterface
+interface SysInfoInterface extends ConstantsInterface
 {
-    Const SYSTEM_TYPE_UNIX = 0x01;
-    Const SYSTEM_TYPE_WIN = 0x02;
 
     /**
     * input [filters], true (show header), removable filters (string)
