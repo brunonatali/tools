@@ -20,6 +20,9 @@ class FileHandler implements FileHandlerInterface
     
     function __construct(string $path, \React\EventLoop\LoopInterface &$loop)
     {
+        if (\BrunoNatali\Tools\SysInfo::getSystemType() === \BrunoNatali\Tools\SysInfo::SYSTEM_TYPE_WIN)
+            throw new \Exception("This interation could not be used under Windows");
+            
         $this->loop = &$loop;
         $this->path = $path;
     }
@@ -36,7 +39,11 @@ class FileHandler implements FileHandlerInterface
             $this->streamGetBytes->resume();
         } else {
             if (($fileDescriptor = $this->getFileDescriptor()) !== false) {
-                $this->streamGetBytes = new \React\Stream\ReadableResourceStream($fileDescriptor, $this->loop, $bytes);
+                try {
+                    $this->streamGetBytes = new \React\Stream\ReadableResourceStream($fileDescriptor, $this->loop, $bytes);
+                } catch (RuntimeException $e) {
+                    $deferred->reject($e);
+                }
                 $this->lastGetBytes = $bytes;
                 $this->streamGetBytes->on('data', function ($chunk) use ($me, $deferred) {
                     $me->streamGetBytes->pause();
@@ -53,7 +60,7 @@ class FileHandler implements FileHandlerInterface
                     $me->close();
                 });
             } else {
-                $deferred->reject('File could not be opened');
+                $deferred->reject(new \Exception('File could not be opened'));
             }
         }
 
@@ -66,7 +73,7 @@ class FileHandler implements FileHandlerInterface
         if ($this->fileDescriptor === false)
             $this->fileDescriptor = @fopen($this->path, "r"); // First of all just open as "read" mode
 
-        if (is_resoruce($this->fileDescriptor) && get_resource_type($this->fileDescriptor) === 'stream') {
+        if (is_resource($this->fileDescriptor) && get_resource_type($this->fileDescriptor) === 'stream') {
             fseek($this->fileDescriptor, $this->readedBytes);
             $this->opened = true;
         } else {
@@ -89,7 +96,7 @@ class FileHandler implements FileHandlerInterface
         $this->hasData = false;
         $this->fileDescriptor = false;
         $this->streamGetBytes = null;
-        $this->readedBytes = 0
+        $this->readedBytes = 0;
         $this->lastGetBytes = 0;
     }
 }
