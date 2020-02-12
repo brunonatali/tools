@@ -31,10 +31,10 @@ $debug = new OutSystem($debugConfig);
 
 $debug->stdout("Start");
 
-$file = new FileHandler(__FILE__, $loop); // Load this file into API
+$file = new FileHandler(__DIR__ . '/example.file', $loop); // Load this file into API
 testConstruct($file);
 
-$debug->stdout("Get file content in pakcages of 200 Bytes");
+$debug->stdout("Get file content using pakcages of 200 Bytes");
 $fileContent = '';
 getPartialContent();
 
@@ -69,7 +69,7 @@ function testConstruct($object): void
 function testContent($content): void
 {
     global $debug;
-    $naturalFileGetContents = file_get_contents(__FILE__);
+    $naturalFileGetContents = file_get_contents(__DIR__ . '/example.file');
     $naturalFileLen = strlen($naturalFileGetContents);
     $apiFileLen = strlen($content);
 
