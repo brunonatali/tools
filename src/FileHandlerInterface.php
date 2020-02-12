@@ -6,7 +6,7 @@ use React\EventLoop\LoopInterface;
 
 interface FileHandlerInterface
 {
-    Public static function getContent(LoopInterface &$loop = null, string $path = null);
+    Public function getContent(LoopInterface &$loop = null, string $path = null);
     Public function getBytes(int $bytes);
     Public function getAccessTime();
     Public function getCreationTime();

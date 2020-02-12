@@ -21,6 +21,7 @@ class FileHandler implements FileHandlerInterface
     Private $path = null;
     Private $times = null;
     Protected $size = null;
+    Private $fileOpened = false;
 
     Private $getBytesStart = 0;
     Private $getBytesCurrent = 0;
@@ -41,7 +42,7 @@ class FileHandler implements FileHandlerInterface
         $this->file = $this->filesystem->file($this->path);
     }
 
-    Public static function getContent(LoopInterface &$loop = null, string $path = null)
+    Public function getContent(LoopInterface &$loop = null, string $path = null)
     {
         $deferred = new Deferred();
         if ($loop === null && $this->loop === null) {
@@ -64,29 +65,41 @@ class FileHandler implements FileHandlerInterface
     Public function getBytes(int $bytes)
     {
         $me = &$this;
-        $continue = true;
         $deferred = new Deferred();
 
-        if ($this->size === null)
-            $this->file->size()->then(function ($size) use ($me, $deferred, $continue) {
+        if ($this->size === null) {
+            $this->file->size()->then(function ($size) use ($me, $deferred, $bytes) {
                 $me->size = $size;
+                $me->getBytes($bytes)->then(function ($content) use ($deferred) {
+                    $deferred->resolve($content);
+                });
             }, function ($e) {
-                $continue = false;
                 $deferred->reject($e);
             });
-        
+
+            return $deferred->promise();
+        }
+
         if ($this->getBytesStart + $bytes > $this->size) $bytes = $this->size - $this->getBytesStart;
 
-        $this->file->open('r')->then(function (ReadableStreamInterface $stream) use ($me, $deferred, $bytes) {
-            $fileDescriptor = $stream->getFiledescriptor();
-
-            $me->adapter->read($fileDescriptor, $bytes, $me->getBytesStart)->then(function ($content) use ($me, $deferred, $bytes) {
-                $me->getBytesStart = $me->getBytesStart + $bytes;
-                $deferred->resolve($content);
-            });
+        $me->adapter->read($this->openFileAsStream(), $bytes, $this->getBytesStart)->then(function ($content) use ($me, $deferred, $bytes) {
+            $me->getBytesStart = $me->getBytesStart + $bytes;
+            $deferred->resolve($content);
         });
 
         return $deferred->promise();
+    }
+
+    Private function &openFileAsStream()
+    {
+        if ($this->fileOpened === false) {
+            $me = &$this;
+            $this->file->open('r')->then(function (ReadableStreamInterface $stream) use ($me) {
+                $me->fileOpened = $stream->getFiledescriptor();
+            });
+        } else {
+            return $this->fileOpened; 
+        }    
     }
 
     Public function getAccessTime()

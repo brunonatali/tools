@@ -38,20 +38,36 @@ $fileContent = null;
 $file->getContent()->then(function ($content) use ($debug, &$fileContent) {
     $debug->stdout("Get this file content");
     $fileContent = $content;
+    testContent($fileContent);
 }, 
 function ($e) use ($debug) {
     $debug->stdout("Error get this file content: " . $e->getMessage());
 });
-testContent($fileContent);
 
-
+$debug->stdout("Get file content in parts of 200 Bytes");
+$fileContent = '';
+getPartialContent();
 
 $loop->run();
 
+function getPartialContent()
+{
+    global $file, $fileContent, $debug;
+    $file->getBytes(200)->then(function ($content) use ($debug, &$fileContent) {
+        $currentContentLen = strlen($content);
+        $debug->stdout("Catch -> " . $currentContentLen);
+        $fileContent .= $content;
+        if ($currentContentLen === 0) testContent($fileContent);
+        else getPartialContent();
+    }, 
+    function ($e) use ($debug) {
+        $debug->stdout("Error get content part: " . $e->getMessage());
+    });
+}
 
 function testConstruct($object): void
 {
-    global $debug;
+    global $debug, $file;
     if (is_object($object) && $object instanceof FileHandlerInterface) {
         $debug->stdout("Object creation successfully");
     } else {
