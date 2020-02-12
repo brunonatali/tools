@@ -2,7 +2,7 @@
 
 namespace BrunoNatali\Tools;
 
-interface SystemInteractionInterface
+interface SystemInteractionInterface extends SysInfoInterface
 {
     Const SYSTEM_RUN_FOLDER_UNIX = ['/run/systema/', '/var/run/systema/'];
     Const SYSTEM_RUN_FOLDER_WIN = ['%TEMP%/systema/'];
@@ -11,11 +11,6 @@ interface SystemInteractionInterface
     Const ERROR_COULD_NOT_COMPLETE_PARSE = 0x01; // Some parse coud not be completed or code decide to abort parse
     Const ERROR_SYSTEM_NOT_SUPPORTED = 0x02; // Host system not support this function
     Const ERROR_BUSY_WITH_SAME_REQUEST = 0x03; // Resquested function already called and could not be called again
-
-    Const SYSTEM = [
-        'UNIX' => 0x01,
-        'WIN' => 0x02
-    ];
 
     Public function __toString();
 

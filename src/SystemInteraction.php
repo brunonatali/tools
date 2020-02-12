@@ -38,11 +38,7 @@ class SystemInteraction implements SystemInteractionInterface
         if ($this->loop === null) throw new Exception( "Need to provide LoopInterface.");
 
 
-		if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-			$this->system = self::SYSTEM['WIN'];
-		} else {
-			$this->system = self::SYSTEM['UNIX'];
-		}
+        $this->system = SysInfo::getSystemType();
 
         $userConfig = OutSystem::helpHandleAppName( 
             $userConfig,
@@ -51,7 +47,7 @@ class SystemInteraction implements SystemInteractionInterface
         $this->outSystem = new OutSystem($userConfig);
 
         if (empty($userConfig) || !isset($userConfig['systemRunFolder'])) {
-            if ($this->system === self::SYSTEM['WIN']) {
+            if ($this->system === self::SYSTEM_TYPE_WIN) {
                 $this->sysRunFolder = self::SYSTEM_RUN_FOLDER_WIN;
             } else {
                 $this->sysRunFolder = self::SYSTEM_RUN_FOLDER_UNIX;
@@ -106,7 +102,7 @@ class SystemInteraction implements SystemInteractionInterface
 
         register_shutdown_function([$this, 'setAborted']);
 
-		if ($this->system !== self::SYSTEM['UNIX']) {
+		if ($this->system !== self::SYSTEM_TYPE_UNIX) {
             $this->outSystem->stdout("App initiated.", OutSystem::LEVEL_NOTICE);
             return true;
         }
@@ -175,7 +171,7 @@ class SystemInteraction implements SystemInteractionInterface
 		$toReturn = false;
 		foreach ($this->sysRunFolder as $sysRunFolder)
             if(file_exists($sysRunFolder . $this->myAppName . ($rebootPid ? '.reboot' : '.pid'))) {
-				if ($this->system === self::SYSTEM['UNIX']) {
+				if ($this->system === self::SYSTEM_TYPE_UNIX) {
 					if (!file_exists( "/proc/" . file_get_contents($sysRunFolder . $this->myAppName . ($rebootPid ? '.reboot' : '.pid')))) {
 						@unlink($sysRunFolder . $this->myAppName . '.pid');
 						$toReturn = true;
@@ -212,7 +208,7 @@ class SystemInteraction implements SystemInteractionInterface
     {
         $this->outSystem->stdout("Restarting App.", OutSystem::LEVEL_NOTICE);
         // Just work in UNIX now
-        if ($this->system !== self::SYSTEM['UNIX']) return self::ERROR_SYSTEM_NOT_SUPPORTED;
+        if ($this->system !== self::SYSTEM_TYPE_UNIX) return self::ERROR_SYSTEM_NOT_SUPPORTED;
 
         // check if is needed
         if ($this->loop === null) 
@@ -231,7 +227,7 @@ class SystemInteraction implements SystemInteractionInterface
         $return = self::ERROR_OK;
         $cmdArgs = (isset($argv) ? implode(' ', $argv) : '');
     
-        if ($this->system === self::SYSTEM['UNIX']) {
+        if ($this->system === self::SYSTEM_TYPE_UNIX) {
             $procRunningNow = SysInfo::getCommandByProcName([$this->myAppName]);
         } else {
             // To use when implemented for windows too

@@ -2,12 +2,8 @@
 
 namespace BrunoNatali\Tools;
 
-class SysInfo
+class SysInfo implements SysInfoInterface
 {
-
-    /*
-    * input [filters], true (show header), removable filters (string)
-    */
     Public static function netstat(...$imputs): array
     {
         $filter = false;
@@ -41,9 +37,6 @@ class SysInfo
         return $out;
     }
 
-    /*
-    * input [filters], true (show header)
-    */
     Public static function ps(...$imputs): array
     {
         $filter = false;
@@ -60,10 +53,6 @@ class SysInfo
         return $out;
     }
 
-    /*
-    * input [filters], true (show cmd arguments)
-    * output string of command or array with all match commands
-    */
     Public static function getCommandByProcName(...$imputs)
     {
         $catchArgs = false;
@@ -99,6 +88,15 @@ class SysInfo
         }
 
         return false;
+    }
+
+    Public static function getSystemType(): int
+    {
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+			return self::SYSTEM_TYPE_WIN;
+		} else {
+			return self::SYSTEM_TYPE_UNIX;
+		}
     }
 }
 ?>
