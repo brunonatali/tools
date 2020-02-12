@@ -42,7 +42,7 @@ class FileHandler implements FileHandlerInterface
         $this->file = $this->filesystem->file($this->path);
     }
 
-    Public function getContent(LoopInterface &$loop = null, string $path = null)
+    Public function getContent(LoopInterface $loop = null, string $path = null)
     {
         $deferred = new Deferred();
         if ($loop === null && $this->loop === null) {
@@ -79,16 +79,16 @@ class FileHandler implements FileHandlerInterface
             if ($me->getBytesStart + $bytes > $me->size) $bytes = $me->size - $me->getBytesStart;
 
             $me->openFileAsStream()->then(function ($fileDescriptor) use ($me, $bytes, $deferred) {
-                $me->adapter->read($me->openFileAsStream(), $bytes, $me->getBytesStart)->then(function ($content) use ($me, $deferred, $bytes) {
+                $me->adapter->read($fileDescriptor, $bytes, $me->getBytesStart)->then(function ($content) use ($me, $deferred, $bytes) {
                     $me->getBytesStart = $me->getBytesStart + $bytes;
                     $deferred->resolve($content);
-                }, function ($e) {
+                }, function ($e) use ($deferred) {
                     $deferred->reject($e);
                 });
-            }, function ($e) {
+            }, function ($e) use ($deferred) {
                 $deferred->reject($e);
             });
-        }, function ($e) {
+        }, function ($e) use ($deferred) {
             $deferred->reject($e);
         });
 
@@ -168,17 +168,19 @@ class FileHandler implements FileHandlerInterface
     Private function openFileAsStream()
     {
         $deferred = new Deferred();
-        if (!is_object($this->fileOpened) && $this->fileOpened instanceof ReadableStreamInterface) {
-            $deferred->resolve($me->fileOpened);
-        } else {
-            $me = &$this;
-            $this->file->open('r')->then(function (ReadableStreamInterface $stream) use ($me, $deferred) {
-                $me->fileOpened = $stream->getFiledescriptor();
-                $deferred->resolve($me->fileOpened);
-            }, function ($e) {
-                $deferred->reject($e);
-            });
-        }    
+        $letsResolve = true;
+        if (is_object($this->fileOpened) && $this->fileOpened instanceof ReadableStreamInterface)
+            $letsResolve = false;
+
+        $me = &$this;
+        $this->file->open('r')->then(function (ReadableStreamInterface $stream) use ($me, $deferred, $letsResolve) {
+            $me->fileOpened = $stream;
+            if ($letsResolve) $deferred->resolve($me->fileOpened->getFiledescriptor());
+        }, function ($e) use ($deferred, $letsResolve) {
+            if ($letsResolve) $deferred->reject($e);
+        });
+
+        if (!$letsResolve) $deferred->resolve($this->fileOpened->getFiledescriptor());
         return $deferred->promise();
     }
 }
