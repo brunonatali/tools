@@ -8,6 +8,7 @@ interface FileHandlerInterface
 {
     Public function getContent(LoopInterface &$loop = null, string $path = null);
     Public function getBytes(int $bytes);
+    Public function getFileSize(bool $forceCheck = false);
     Public function getAccessTime();
     Public function getCreationTime();
     Public function getModifiedTime();

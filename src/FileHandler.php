@@ -67,43 +67,36 @@ class FileHandler implements FileHandlerInterface
         $me = &$this;
         $deferred = new Deferred();
 
-        if ($this->size === null) {
-            $this->file->size()->then(function ($size) use ($me, $deferred, $bytes) {
-                $me->size = $size;
-                $me->getBytes($bytes)->then(function ($content) use ($deferred) {
+        $this->getFileSize()->then(function () use ($me, $bytes, $deferred) {
+            if ($me->getBytesStart + $bytes > $me->size) $bytes = $me->size - $me->getBytesStart;
+
+            $me->openFileAsStream()->then(function ($fileDescriptor) use ($me, $bytes, $deferred) {
+                $me->adapter->read($me->openFileAsStream(), $bytes, $me->getBytesStart)->then(function ($content) use ($me, $deferred, $bytes) {
+                    $me->getBytesStart = $me->getBytesStart + $bytes;
                     $deferred->resolve($content);
                 });
-            }, function ($e) {
-                $deferred->reject($e);
-            });
-
-            return $deferred->promise();
-        }
-
-        if ($this->getBytesStart + $bytes > $this->size) $bytes = $this->size - $this->getBytesStart;
-
-        $this->openFileAsStream()->then(function ($fileDescriptor) use () {
-            $me->adapter->read($this->openFileAsStream(), $bytes, $this->getBytesStart)->then(function ($content) use ($me, $deferred, $bytes) {
-                $me->getBytesStart = $me->getBytesStart + $bytes;
-                $deferred->resolve($content);
             });
         });
 
         return $deferred->promise();
     }
 
-    Private function openFileAsStream()
+    Public function getFileSize(bool $forceCheck = false)
     {
         $deferred = new Deferred();
-        if (!is_object($this->fileOpened) && $this->fileOpened istanceof ReadableStreamInterface) {
-            $deferred->resolve($me->fileOpened);
-        } else {
-            $me = &$this;
-            $this->file->open('r')->then(function (ReadableStreamInterface $stream) use ($me, $deferred) {
-                $me->fileOpened = $stream->getFiledescriptor();
-                $deferred->resolve($me->fileOpened);
+        $me = &$this;
+
+        if ($this->size === null || $forceCheck) {
+            $this->file->size()->then(function ($size) use ($me, $deferred, $bytes) {
+                $me->size = $size;
+                $deferred->resolve($me->size);
+            }, function ($e) {
+                $deferred->reject($e);
             });
-        }    
+        } else {
+            $deferred->resolve($this->size);
+        }
+
         return $deferred->promise();
     }
 
@@ -155,6 +148,21 @@ class FileHandler implements FileHandlerInterface
             $deferred->resolve($this->times['mtime']->format('r'));
         }
 
+        return $deferred->promise();
+    }
+
+    Private function openFileAsStream()
+    {
+        $deferred = new Deferred();
+        if (!is_object($this->fileOpened) && $this->fileOpened instanceof ReadableStreamInterface) {
+            $deferred->resolve($me->fileOpened);
+        } else {
+            $me = &$this;
+            $this->file->open('r')->then(function (ReadableStreamInterface $stream) use ($me, $deferred) {
+                $me->fileOpened = $stream->getFiledescriptor();
+                $deferred->resolve($me->fileOpened);
+            });
+        }    
         return $deferred->promise();
     }
 }
