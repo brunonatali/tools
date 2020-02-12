@@ -82,24 +82,29 @@ class FileHandler implements FileHandlerInterface
 
         if ($this->getBytesStart + $bytes > $this->size) $bytes = $this->size - $this->getBytesStart;
 
-        $me->adapter->read($this->openFileAsStream(), $bytes, $this->getBytesStart)->then(function ($content) use ($me, $deferred, $bytes) {
-            $me->getBytesStart = $me->getBytesStart + $bytes;
-            $deferred->resolve($content);
+        $this->openFileAsStream()->then(function ($fileDescriptor) use () {
+            $me->adapter->read($this->openFileAsStream(), $bytes, $this->getBytesStart)->then(function ($content) use ($me, $deferred, $bytes) {
+                $me->getBytesStart = $me->getBytesStart + $bytes;
+                $deferred->resolve($content);
+            });
         });
 
         return $deferred->promise();
     }
 
-    Private function &openFileAsStream()
+    Private function openFileAsStream()
     {
-        if ($this->fileOpened === false) {
-            $me = &$this;
-            $this->file->open('r')->then(function (ReadableStreamInterface $stream) use ($me) {
-                $me->fileOpened = $stream->getFiledescriptor();
-            });
+        $deferred = new Deferred();
+        if (!is_object($this->fileOpened) && $this->fileOpened istanceof ReadableStreamInterface) {
+            $deferred->resolve($me->fileOpened);
         } else {
-            return $this->fileOpened; 
+            $me = &$this;
+            $this->file->open('r')->then(function (ReadableStreamInterface $stream) use ($me, $deferred) {
+                $me->fileOpened = $stream->getFiledescriptor();
+                $deferred->resolve($me->fileOpened);
+            });
         }    
+        return $deferred->promise();
     }
 
     Public function getAccessTime()

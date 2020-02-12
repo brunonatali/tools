@@ -68,7 +68,7 @@ function getPartialContent()
 function testConstruct($object): void
 {
     global $debug, $file;
-    if (is_object($object) && $object instanceof FileHandlerInterface) {
+    if (is_object($object) && $object instanceof BrunoNatali\Tools\FileHandlerInterface) {
         $debug->stdout("Object creation successfully");
     } else {
         $debug->stdout("Object created with wrong class: " . get_class($file));
