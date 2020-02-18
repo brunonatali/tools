@@ -60,7 +60,7 @@ class Queue
         return true;
     }
 
-    Public function listProccess(string $id, $data = null)
+    Public function listProcess(string $id, $data = null)
     {
         $toReturn = true;
         if (!isset($this->listById[$id])) return false;
