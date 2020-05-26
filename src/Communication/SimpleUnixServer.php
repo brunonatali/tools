@@ -10,7 +10,7 @@ use BrunoNatali\Tools\DataManipulation;
 use BrunoNatali\Tools\Queue;
 use BrunoNatali\SystemInteraction\Tools as SysTools;
 
-class SimpleUnixServer implements SimpleUnixServerInterface
+class SimpleUnixServer
 {
     private $loop;
     private $sock;
