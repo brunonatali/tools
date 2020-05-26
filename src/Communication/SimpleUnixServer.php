@@ -19,11 +19,7 @@ class SimpleUnixServer implements SimpleUnixServerInterface
     Protected $outSystem;
 
     private $clientConn = []; // Handle all clients info
-    private $callback = [
-        'connect' => function ($id) {},
-        'data' => function ($data, $id) {},
-        'close' => function ($id) {}
-    ];
+    private $callback = [];
 
     /**
      * LoopInterface
@@ -33,6 +29,12 @@ class SimpleUnixServer implements SimpleUnixServerInterface
     {
         $this->loop = &$loop;
         $this->sock = $sock;
+
+        $this->callback = [
+            'connect' => function ($id) {},
+            'data' => function ($data, $id) {},
+            'close' => function ($id) {}
+        ];
 
         $serverName = 'SUS';
         $userConfig = [];
@@ -149,7 +151,7 @@ class SimpleUnixServer implements SimpleUnixServerInterface
             $this->clientConn[$id]['conn']->write(DataManipulation::simpleSerialEncode($data));
             return true;
         }
-        
+
         return false;
     }
 
