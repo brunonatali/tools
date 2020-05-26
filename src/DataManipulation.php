@@ -35,6 +35,12 @@ class DataManipulation implements DataManipulationInterface
 
             return $dataToReturn;
         } else {
+            if ($this->buffer !== null) {
+                $dataToReturn = $this->simpleSerialDecode();
+                $this->buffer .= $data;
+                return $dataToReturn;
+            }
+
             $originalDataLen = \strlen($data);
             $len = (int) \substr($data, 0, self::STRING_LEN);
             if ($len === 0) return null;
