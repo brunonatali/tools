@@ -10,7 +10,8 @@ class JsonFile
         foreach ($incPath as $newPath) 
             \set_include_path($newPath);
 
-        $content = @\file_get_contents($file, FILE_USE_INCLUDE_PATH | FILE_TEXT);
+        //$content = @\file_get_contents($file, FILE_USE_INCLUDE_PATH | FILE_TEXT);
+        $content = @\file_get_contents($file, true, null); // for php < v6 (probably bug in php v7.4)
         if ($content === false)
             return [];
 
@@ -25,13 +26,16 @@ class JsonFile
         if (empty($dataArray))
             return false;
 
+        $args = [$file];
+        \array_push($args, $incPath);
+        
         return (
             \is_integer( 
                 \file_put_contents(
                     $file, 
                     \json_encode( 
                         \array_merge(
-                            ($overwrite ? [] : self::readJsonAsArray($file, $incPath)), 
+                            ($overwrite ? [] : \call_user_func_array([__NAMESPACE__ . '\JsonFile', 'readAsArray'], $args)), 
                             $dataArray
                         )
                     ), 
