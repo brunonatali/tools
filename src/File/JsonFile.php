@@ -27,7 +27,8 @@ class JsonFile
             return false;
 
         $args = [$file];
-        \array_push($args, $incPath);
+        foreach ($incPath as $value)
+            $args[] = $value;
         
         return (
             \is_integer( 
