@@ -5,12 +5,11 @@ namespace BrunoNatali\Tools\Communication;
 use React\Socket\UnixServer as Server;
 use React\Socket\ConnectionInterface;
 
+use BrunoNatali\Tools\Queue;
 use BrunoNatali\Tools\OutSystem;
 use BrunoNatali\Tools\DataManipulation;
-use BrunoNatali\Tools\Queue;
-use BrunoNatali\SystemInteraction\Tools as SysTools;
 
-class SimpleUnixServer
+class SimpleUnixServer implements SimpleUnixServerInterface
 {
     private $loop;
     private $sock;
@@ -56,8 +55,8 @@ class SimpleUnixServer
 
     public function start()
     {
-        SysTools::checkSocketFolder();
-        $this->socketPath = SysTools::checkSocket($this->sock);
+        self::checkSocketFolder();
+        $this->socketPath = self::checkSocket($this->sock);
 
         $this->server = new Server($this->socketPath, $this->loop);
         \chmod($this->socketPath, 0777);
@@ -142,14 +141,22 @@ class SimpleUnixServer
         if (!isset($this->clientConn[$id]))
             return false;
         
-        return $this->callback['data']($id);
+        return $this->callback['data']($funcOrData, $id);
     }
 
-    public function write($data, $id): bool
+    public function write($data, $id = null): bool
     {
-        if (isset($this->clientConn[$id])) {
-            $this->clientConn[$id]['conn']->write(DataManipulation::simpleSerialEncode($data));
-            return true;
+        if ($id !== null) {
+            if (isset($this->clientConn[$id])) {
+                $this->clientConn[$id]['conn']->write(DataManipulation::simpleSerialEncode($data));
+                return true;
+            }
+        } else {
+            foreach ($this->clientConn as $id => $client) {
+                $client['conn']->write(DataManipulation::simpleSerialEncode($data));
+            }
+
+            return count($this->clientConn) !== 0;
         }
 
         return false;
@@ -157,7 +164,29 @@ class SimpleUnixServer
 
     private function removeClient($id)
     {
-        if (isset($this->clientConn[$id]))
+        if (isset($this->clientConn[$id])) {
+            if ($this->clientConn[$id]['active'])
+                $this->clientConn[$id]->close();
+
             unset($this->clientConn[$id]);
+        }
+    }
+
+    public static function checkSocketFolder(): bool
+    {
+        if (!\file_exists(self::SOCK_FOLDER)) {
+            \mkdir(self::SOCK_FOLDER, 0755, true );
+            \chmod(self::SOCK_FOLDER, 0755);
+            return false;
+        }
+        return true;
+    } 
+
+    public static function checkSocket($sockName)
+    {
+        $path = self::SOCK_FOLDER . $sockName;
+        if (\file_exists($path)) \unlink($path);
+
+        return $path;
     }
 }
