@@ -21,14 +21,19 @@ class JsonFile
         return $content;
     }
 
-    public static function saveArray(string $file, array $dataArray, bool $overwrite = false, ...$incPath): bool
+    public static function saveArray(string $file, array $dataArray, bool $overwrite = false, ...$usrArgs): bool
     {
         if (empty($dataArray))
             return false;
 
         $args = [$file];
-        foreach ($incPath as $value)
-            $args[] = $value;
+        $flags = 0;
+        foreach ($usrArgs as $value) {
+            if (\is_string($value))
+                $args[] = $value;
+            else if (\is_integer($value))
+                $flags = $flags | $value;
+        }
         
         return (
             \is_integer( 
@@ -38,7 +43,8 @@ class JsonFile
                         \array_merge(
                             ($overwrite ? [] : \call_user_func_array([__NAMESPACE__ . '\JsonFile', 'readAsArray'], $args)), 
                             $dataArray
-                        )
+                        ),
+                        $flags
                     ), 
                     FILE_USE_INCLUDE_PATH | FILE_TEXT
                 )
