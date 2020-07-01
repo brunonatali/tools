@@ -5,11 +5,10 @@ namespace BrunoNatali\Tools\Communication;
 use React\Socket\UnixServer as Server;
 use React\Socket\ConnectionInterface;
 
-use BrunoNatali\Tools\Queue;
 use BrunoNatali\Tools\OutSystem;
 use BrunoNatali\Tools\DataManipulation;
 
-class SimpleUnixServer implements SimpleUnixServerInterface
+class SimpleUnixServer implements SimpleUnixInterface
 {
     private $loop;
     private $sock;
@@ -35,7 +34,7 @@ class SimpleUnixServer implements SimpleUnixServerInterface
             'close' => function ($id) {}
         ];
 
-        $serverName = 'SUS';
+        $serverName = 'SUS'; // SimpleUnixServer
         $userConfig = [];
         foreach ($configs as $param) {
             if (is_string($param))
@@ -68,7 +67,6 @@ class SimpleUnixServer implements SimpleUnixServerInterface
             $this->clientConn[$myId] = [
                 'active' => true,
                 'conn' => &$connection,
-                'queue' => new Queue($this->loop),
                 'dataHandler' => new DataManipulation()
             ];
             $this->outSystem->stdout("New client connection: $myId", OutSystem::LEVEL_NOTICE);
@@ -126,7 +124,7 @@ class SimpleUnixServer implements SimpleUnixServerInterface
 
         if ($this->clientConn[$funcOrId]['active']) {
             $this->clientConn[$funcOrId]['active'] = false;
-            $this->callback['close']($funcOrId);
+            ($this->callback['close'])($funcOrId);
         }
         return true;
     }
@@ -141,7 +139,7 @@ class SimpleUnixServer implements SimpleUnixServerInterface
         if (!isset($this->clientConn[$id]))
             return false;
         
-        return $this->callback['data']($funcOrData, $id);
+        return ($this->callback['data'])($funcOrData, $id);
     }
 
     public function write($data, $id = null): bool

@@ -2,7 +2,7 @@
 
 namespace BrunoNatali\Tools\Communication;
 
-interface SimpleUnixServerInterface 
+interface SimpleUnixInterface 
 {
     const SOCK_FOLDER = '/var/run/';
 
