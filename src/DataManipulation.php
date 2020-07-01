@@ -19,35 +19,51 @@ class DataManipulation implements DataManipulationInterface
     /**
      * $len will got current string len
     */
-    public function simpleSerialDecode($data = null, &$len = null): string
+    public function simpleSerialDecode($data = null, &$len = null)
     {
-        if ($data === null) {
+        if ($data === null) { // Get buffer
             if ($this->buffer === null)
                 return null;
 
-            $len = 0;
-            $dataToReturn = $this->simpleSerialDecode($this->buffer, $len);
-            $currentParsedLen = $len + self::STRING_LEN;
-            if (\strlen($this->buffer) - $currentParsedLen)
-                $this->buffer = \substr($this->buffer, $currentParsedLen);
+            $bufferLen = \strlen($this->buffer);
+            // Get next package len
+            $len = (int) \substr($this->buffer, 0, self::STRING_LEN);
+            if ($len === 0) { // Empty package
+                $this->buffer = null;
+                return null;
+            }
+
+            // Get package
+            $dataToReturn = \substr($this->buffer, self::STRING_LEN, $len);
+
+            // Check if have more packages on buffer
+            if ((\strlen($dataToReturn) + self::STRING_LEN) !== $bufferLen)
+                $this->buffer = \substr($this->buffer, self::STRING_LEN + $len);
             else
                 $this->buffer = null;
 
             return $dataToReturn;
         } else {
             if ($this->buffer !== null) {
+                // First remove next package
                 $dataToReturn = $this->simpleSerialDecode();
+                // Add current data to buffer
                 $this->buffer .= $data;
+
                 return $dataToReturn;
             }
 
             $originalDataLen = \strlen($data);
+            // Get package len
             $len = (int) \substr($data, 0, self::STRING_LEN);
-            if ($len === 0) return null;
+            if ($len === 0) 
+                return null;
 
+            // Get package
             $dataToReturn = \substr($data, self::STRING_LEN, $len);
 
-            if (($len = \strlen($dataToReturn)) !== $originalDataLen)
+            // Check if have more packages & add to buffer
+            if ((\strlen($dataToReturn) + self::STRING_LEN) !== $originalDataLen)
                 $this->buffer .= \substr($data, self::STRING_LEN + $len);
 
             return $dataToReturn;
