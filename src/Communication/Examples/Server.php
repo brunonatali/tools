@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-require __DIR__ . '/../../../../autoload.php';
+require __DIR__ . '/../../../../../autoload.php';
 
 use BrunoNatali\Tools\Communication\SimpleUnixServer; 
 
@@ -39,3 +39,5 @@ $outSystem->stdout("OK", OutSystem::LEVEL_NOTICE);
 */
 $outSystem->stdout("Starting server ...", OutSystem::LEVEL_NOTICE);
 $server->start();
+
+$loop->run();

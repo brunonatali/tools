@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-require __DIR__ . '/../../../../autoload.php';
+require __DIR__ . '/../../../../../autoload.php';
 
 use BrunoNatali\Tools\Communication\SimpleUnixClient; 
 
@@ -47,12 +47,15 @@ $client->onConnect(function () use ($outSystem, $client, $loop) {
     /**
      * Call write after 5 seconds AND close connection
     */
-    $loop->addTimer(5.0, function () use ($client) {
+    $loop->addTimer(5.0, function () use ($client, $loop) {
         for ($i=0; $i < 5; $i++) { 
             $client->write('Foobar');
         }
 
-        $client->close();
+        // Wait send all before close
+        $loop->addTimer(1.0, function () use ($client) {
+            $client->close();
+        });
     });
 });
 
@@ -61,13 +64,7 @@ $outSystem->stdout("OK", OutSystem::LEVEL_NOTICE);
 /**
  * Start server
 */
-$outSystem->stdout("Starting server ...", OutSystem::LEVEL_NOTICE);
-$server->start();
+$outSystem->stdout("Connecting client ...", OutSystem::LEVEL_NOTICE);
+$client->connect();
 
-/**
- * Write function
-*/
-function write()
-{
-
-}
+$loop->run();

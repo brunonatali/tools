@@ -75,10 +75,16 @@ class SimpleUnixServer implements SimpleUnixInterface
 
                 $this->outSystem->stdout("Raw data ($myId): '$data'", OutSystem::LEVEL_NOTICE);
 
-                while (($data = $this->clientConn[$myId]['dataHandler']->simpleSerialDecode($data)) !== null) {
-
-                    $this->outSystem->stdout("Parsed data ($myId): " . $this->onData($data, $myId), OutSystem::LEVEL_NOTICE);
-
+                $getData = true;
+                $data = $this->clientConn[$myId]['dataHandler']->simpleSerialDecode($data);
+                
+                while ($getData) {
+                    if ($data !== null) {
+                        $this->outSystem->stdout("Parsed data ($myId): " . $this->onData($data, $myId), OutSystem::LEVEL_NOTICE);
+                        $data = $this->clientConn[$myId]['dataHandler']->simpleSerialDecode();
+                    } else {
+                        $getData = false;
+                    }
                 }
 
             });

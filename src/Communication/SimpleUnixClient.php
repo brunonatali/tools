@@ -24,7 +24,7 @@ class SimpleUnixClient implements SimpleUnixInterface
 
     Protected $outSystem;
 
-    function __construct(&$loop, $serverSock, $configs = [])
+    function __construct(&$loop, $serverSock, ...$configs)
     {
         $this->loop = &$loop;
         $this->serverSock = $serverSock;
@@ -65,9 +65,19 @@ class SimpleUnixClient implements SimpleUnixInterface
                 $me->serverConn = &$serverConn;
                 $me->connected = true;
 
+                ($this->callback['connect'])();
+
                 $serverConn->on('data', function ($data) use ($me) {
-                    while (($data = $this->dataMan->simpleSerialDecode($data)) !== null) {
-                        ($this->callback['data'])($data);
+                    $getData = true;
+                    $data = $this->dataMan->simpleSerialDecode($data);
+                    
+                    while ($getData) {
+                        if ($data !== null) {
+                            ($this->callback['data'])($data);
+                            $data = $this->dataMan->simpleSerialDecode();
+                        } else {
+                            $getData = false;
+                        }
                     }
                 });
 
@@ -115,7 +125,7 @@ class SimpleUnixClient implements SimpleUnixInterface
     {
         if (!$this->connected) return false;
 
-        $this->outSystem->stdout('Write: ' . $command, OutSystem::LEVEL_NOTICE);
+        $this->outSystem->stdout('Write: ' . $data, OutSystem::LEVEL_NOTICE);
 
         $this->serverConn->write(DataManipulation::simpleSerialEncode($data));
         
