@@ -150,9 +150,17 @@ class SimpleUnixServer implements SimpleUnixInterface
     public function write($data, $id = null): bool
     {
         if ($id !== null) {
-            if (isset($this->clientConn[$id])) {
-                $this->clientConn[$id]['conn']->write(DataManipulation::simpleSerialEncode($data));
-                return true;
+            if (\is_array($id)) {
+                $ret = true;
+                foreach ($id as $cId)
+                    $ret = $ret && $this->write($data, $cId);
+
+                return $ret;
+            } else {
+                if (isset($this->clientConn[$id])) {
+                    $this->clientConn[$id]['conn']->write(DataManipulation::simpleSerialEncode($data));
+                    return true;
+                }
             }
         } else {
             foreach ($this->clientConn as $id => $client) {
@@ -163,6 +171,15 @@ class SimpleUnixServer implements SimpleUnixInterface
         }
 
         return false;
+    }
+
+    public function getClientsId(): array
+    {
+        $ret = [];
+        foreach ($this->clientConn as $id => $client)
+            $ret[] = $id;
+
+        return $ret;
     }
 
     private function removeClient($id)
