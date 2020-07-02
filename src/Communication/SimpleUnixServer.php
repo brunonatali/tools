@@ -45,8 +45,7 @@ class SimpleUnixServer implements SimpleUnixInterface
         $config = OutSystem::helpHandleAppName( 
             $userConfig,
             [
-                "outSystemName" => $serverName,
-                "outSystemEnabled" => true
+                "outSystemName" => $serverName
             ]
         );
         $this->outSystem = new OutSystem($config);
@@ -77,7 +76,7 @@ class SimpleUnixServer implements SimpleUnixInterface
 
                 $getData = true;
                 $data = $this->clientConn[$myId]['dataHandler']->simpleSerialDecode($data);
-                
+
                 while ($getData) {
                     if ($data !== null) {
                         $this->outSystem->stdout("Parsed data ($myId): " . $this->onData($data, $myId), OutSystem::LEVEL_NOTICE);

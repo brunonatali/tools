@@ -48,8 +48,7 @@ class SimpleUnixClient implements SimpleUnixInterface
         $config = OutSystem::helpHandleAppName( 
             $userConfig,
             [
-                "outSystemName" => $clientName,
-                "outSystemEnabled" => true
+                "outSystemName" => $clientName
             ]
         );
         $this->outSystem = new OutSystem($config);
@@ -70,7 +69,7 @@ class SimpleUnixClient implements SimpleUnixInterface
                 $serverConn->on('data', function ($data) use ($me) {
                     $getData = true;
                     $data = $this->dataMan->simpleSerialDecode($data);
-                    
+
                     while ($getData) {
                         if ($data !== null) {
                             ($this->callback['data'])($data);
