@@ -123,8 +123,13 @@ class OutSystem implements OutSystemInterface
         if ($msg === null) return false;
         if ($level < $this->outSystemLevel) return false;
 
-        if ($this->lastMsgHasEol) $msg = "[" . DATE("y-m-d H:i:s") . "]$this->outSystemName " . $msg; // input Time Stamp at beginning if last msg had LF
-        if ($eol) $msg .= $this->outSystemEolMsg;
+        if ($this->lastMsgHasEol) // input Time Stamp at beginning if last msg had LF
+            $msg = "[" . DATE("y-m-d H:i:s") . "]$this->outSystemName " . 
+                (static::isPrintable($msg) ? $msg : '(hex)' . \bin2hex($msg)); 
+        
+        if ($eol) 
+            $msg .= $this->outSystemEolMsg;
+        
         echo $msg;
 
         $this->lastMsgHasEol = $eol;
@@ -159,8 +164,12 @@ class OutSystem implements OutSystemInterface
 
         if ($msg === null) return false;
 
-        if ($timeStamp !== 0) $msg = "[" . DATE("y-m-d H:i:s") . "]$outSystemName " . $msg;
+        if ($timeStamp !== 0) 
+            $msg = "[" . DATE("y-m-d H:i:s") . "]$outSystemName " . 
+                (static::isPrintable($msg) ? $msg : '(hex)' . \bin2hex($msg));
+
         echo $msg . ($eol ? $eol : '');
+
         return true;
     }
 
@@ -181,6 +190,11 @@ class OutSystem implements OutSystemInterface
 
         unset($myConfig["outSystemName"]); // Just for ensurance
         return array_merge($receivedConfig, $myConfig);
+    }
+
+    public static function isPrintable(string $msg)
+    {
+        return \preg_match('/^([\x09\x0A\x0D\x20-\x7E])*$/', $msg) === 1;
     }
 }
 ?>
