@@ -15,6 +15,7 @@ class SimpleUnixClient implements SimpleUnixInterface
     private $loop;
     private $serverSock;
     private $dataMan;
+    private $userConfig;
 
     private $callback = [];
 
@@ -35,23 +36,28 @@ class SimpleUnixClient implements SimpleUnixInterface
             'close' => function () {}
         ];
 
-        $this->dataMan = new DataManipulation();
-
         $clientName = 'SUC'; // SimpleUnixClient
-        $userConfig = [];
+        $this->userConfig = [];
         foreach ($configs as $param) {
             if (is_string($param))
                 $clientName = $param;
             else if (is_array($param))
-                $userConfig += $param;
+                $this->userConfig += $param;
         }
         $config = OutSystem::helpHandleAppName( 
-            $userConfig,
+            $this->userConfig,
             [
                 "outSystemName" => $clientName
             ]
         );
         $this->outSystem = new OutSystem($config);
+
+        $this->userConfig += [ 
+            'serializeData' => true
+        ];
+
+        if ($this->userConfig['serializeData'])
+            $this->dataMan = new DataManipulation();
     }
 
     public function connect()
@@ -67,16 +73,20 @@ class SimpleUnixClient implements SimpleUnixInterface
                 ($this->callback['connect'])();
 
                 $serverConn->on('data', function ($data) use ($me) {
-                    $getData = true;
-                    $data = $this->dataMan->simpleSerialDecode($data);
-
-                    while ($getData) {
-                        if ($data !== null) {
-                            ($this->callback['data'])($data);
-                            $data = $this->dataMan->simpleSerialDecode();
-                        } else {
-                            $getData = false;
+                    if ($this->userConfig['serializeData']) {
+                        $getData = true;
+                        $data = $this->dataMan->simpleSerialDecode($data);
+    
+                        while ($getData) {
+                            if ($data !== null) {
+                                ($this->callback['data'])($data);
+                                $data = $this->dataMan->simpleSerialDecode();
+                            } else {
+                                $getData = false;
+                            }
                         }
+                    } else {
+                        ($this->callback['data'])($data);
                     }
                 });
 
@@ -126,7 +136,11 @@ class SimpleUnixClient implements SimpleUnixInterface
 
         $this->outSystem->stdout('Write: ' . $data, OutSystem::LEVEL_NOTICE);
 
-        $this->serverConn->write(DataManipulation::simpleSerialEncode($data));
+        $this->serverConn->write((
+            $this->userConfig['serializeData'] ?
+            DataManipulation::simpleSerialEncode($data) :
+            $data
+        ));
         
         return true;
     }
