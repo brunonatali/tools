@@ -131,14 +131,14 @@ class SimpleBaseServer implements SimpleBaseServerInterface
 
     public function onData($funcOrData, $id = null)
     {
-        if (\is_callable($funcOrData)) {
+        if (\is_callable($funcOrData) && !is_string($funcOrData)) { // char "_" is identified as callable
             $this->callback['data'] = $funcOrData;
             return true;
         }
 
         if (!isset($this->clientConn[$id]))
             return false;
-        
+            
         return ($this->callback['data'])($funcOrData, $id);
     }
 
@@ -201,7 +201,7 @@ class SimpleBaseServer implements SimpleBaseServerInterface
     {
         if (isset($this->clientConn[$id])) {
             if ($this->clientConn[$id]['active'])
-                $this->clientConn[$id]->close();
+                $this->clientConn[$id]['conn']->close();
 
             unset($this->clientConn[$id]);
         }
