@@ -12,6 +12,8 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
 
     private $parsers = [];
 
+    public $info = null;
+
     function __construct(&$loop, string $name, array $config = [])
     {
         $config += [
@@ -83,15 +85,29 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
 
     public function serverAnswerAck($id)
     {
-        $this->server->write(\json_encode([
+        $answer = [
             'ident' => self::DATA_TYPE_ACK
-        ]), $id);
+        ];
+
+        if ($this->info !== null) {
+            $answer['info'] = $this->info;
+            $this->info = null;
+        }
+
+        $this->server->write(\json_encode($answer), $id);
     }
 
     public function serverAnswerNack($id)
     {
-        $this->server->write(\json_encode([
+        $answer = [
             'ident' => self::DATA_TYPE_NACK
-        ]), $id);
+        ];
+
+        if ($this->info !== null) {
+            $answer['info'] = $this->info;
+            $this->info = null;
+        }
+
+        $this->server->write(\json_encode($answer), $id);
     }
 }
