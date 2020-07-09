@@ -25,7 +25,7 @@ class SimpleBaseServer implements SimpleBaseServerInterface
     function __construct(...$configs)
     {
         if (!isset($this->callback['connect']))
-            $this->callback['connect'] = function ($id) {};
+            $this->callback['connect'] = function ($id) { return true; };
 
         if (!isset($this->callback['data']))
             $this->callback['data'] = function ($data, $id) {};
@@ -57,14 +57,14 @@ class SimpleBaseServer implements SimpleBaseServerInterface
 
             $myId = (int) $connection->stream; // Use stream ID as own ID
 
-            $this->clientConn[$myId] = [
-                'active' => true,
-                'conn' => &$connection,
-                'dataHandler' => new DataManipulation()
-            ];
-            $this->outSystem->stdout("New client connection: $myId", OutSystem::LEVEL_NOTICE);
+            if (!$this->onConnect($myId, $connection)) {
+                $this->outSystem->stdout("Client connection rejected: $myId", OutSystem::LEVEL_NOTICE);
+                $connection->close();
+                return;
+            }
+
                 
-            $connection->on('data', function ($data) use ($myId) { 
+            $connection->on('data', function ($data) use ($myId) {
 
                 $this->outSystem->stdout("Data -raw- ($myId): $data", OutSystem::LEVEL_NOTICE);
 
@@ -112,6 +112,33 @@ class SimpleBaseServer implements SimpleBaseServerInterface
         });
     }
 
+    public function onConnect($funcOrId = null, &$connection = null): bool
+    {
+        if (\is_callable($funcOrId) && !\is_integer($funcOrId)) {
+            $this->callback['connect'] = $funcOrId;
+            return true;
+        }
+        
+        if ($connection === null)
+            return false;
+
+        if (($this->callback['connect'])($funcOrId) === true) {
+            $this->clientConn[$funcOrId] = [
+                'active' => true,
+                'conn' => &$connection,
+                'dataHandler' => (
+                    $this->userConfig['serializeData'] ? 
+                    new DataManipulation() : 
+                    null
+                ) 
+            ];
+
+            return true;
+        }
+
+        return false;
+    }
+
     public function onClose($funcOrId = null): bool
     {
         if (\is_callable($funcOrId)) {
@@ -150,7 +177,10 @@ class SimpleBaseServer implements SimpleBaseServerInterface
 
                 $ret = true;
                 foreach ($id as $cId) {
-                    $ret = $ret && $this->write($data, $cId);
+                    if (isset($this->clientConn[$cId]))
+                        $ret = $ret && $this->write($data, $cId);
+                    else 
+                        $ret = false;
                     
                     $this->outSystem->stdout("Write to ($cId)", OutSystem::LEVEL_NOTICE);
                 }
@@ -185,6 +215,47 @@ class SimpleBaseServer implements SimpleBaseServerInterface
         }
 
         $this->outSystem->stdout("Write (ERROR): $data", OutSystem::LEVEL_NOTICE);
+        return false;
+    }
+
+    public function disconnectClient($id = null): boolval
+    {
+        if ($id !== null) {
+            if (\is_array($id)) {
+                $this->outSystem->stdout("Disconnect (array)", OutSystem::LEVEL_NOTICE);
+
+                $ret = true;
+                foreach ($id as $cId) {
+                    if (isset($this->clientConn[$cId]))
+                        $ret = $ret && $this->clientConn[$cId]['conn']->close();
+                    else 
+                        $ret = false;
+                    
+                    $this->outSystem->stdout("Close sent to ($cId)", OutSystem::LEVEL_NOTICE);
+                }
+
+                return $ret;
+            } else {
+                if (isset($this->clientConn[$id])) {
+                    $this->outSystem->stdout("Close sent to ($id)", OutSystem::LEVEL_NOTICE);
+
+                    $this->clientConn[$id]['conn']->close();
+                    return true;
+                }
+            }
+        } else {
+            $this->outSystem->stdout("Close (all): $data", OutSystem::LEVEL_NOTICE);
+
+            foreach ($this->clientConn as $id => $client) {
+                $this->outSystem->stdout("Close sent to ($id)", OutSystem::LEVEL_NOTICE);
+
+                $client['conn']->close();
+            }
+
+            return true;
+        }
+
+        $this->outSystem->stdout("Close (ERROR)", OutSystem::LEVEL_NOTICE);
         return false;
     }
 
