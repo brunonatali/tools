@@ -268,6 +268,11 @@ class SimpleBaseServer implements SimpleBaseServerInterface
         return $ret;
     }
 
+    public function close()
+    {
+        $this->server->close();
+    }
+
     private function removeClient($id)
     {
         if (isset($this->clientConn[$id])) {
