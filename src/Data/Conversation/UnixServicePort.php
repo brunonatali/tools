@@ -41,9 +41,9 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
                 $this->server->write($result, $id);
             else if (\is_bool($result))
                 if($result)
-                    serverAnswerAck();
+                    $this->serverAnswerAck($id);
                 else
-                    serverAnswerNack();
+                    $this->serverAnswerNack($id);
         });
 
         $outSystem = new OutSystem($config);
@@ -62,7 +62,11 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
         foreach ($this->parsers as $key => $parser) {
             if ($data['ident'] === $parser['ident']) {
                 $myServer = &$this->server;
-                return ($parser['callback'])($data['content'], $id, $myServer);
+                return ($parser['callback'])(
+                    (isset($data['content']) ? $data['content'] : []), 
+                    $id, 
+                    $myServer
+                );
             }
         }
 
