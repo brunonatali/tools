@@ -3,7 +3,6 @@
 namespace BrunoNatali\Tools\Communication;
 
 use React\Socket\UnixServer as Server;
-use React\Socket\ConnectionInterface;
 
 use BrunoNatali\Tools\OutSystem;
 use BrunoNatali\Tools\DataManipulation;
