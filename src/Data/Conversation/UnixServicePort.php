@@ -8,7 +8,7 @@ use BrunoNatali\Tools\OutSystem;
 
 class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
 {
-    private $server;
+    public $server;
 
     private $parsers = [];
 
