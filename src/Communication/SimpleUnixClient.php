@@ -32,6 +32,11 @@ final class SimpleUnixClient extends SimpleBaseClient implements SimpleUnixInter
 
     public function connect()
     {
+        if ($this->myConn !== null) {
+            $this->connectClient();
+            return;
+        }
+
         $this->myConn = new \React\Socket\UnixConnector($this->loop);
 
         /**
