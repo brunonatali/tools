@@ -23,6 +23,10 @@ class SimpleBaseClient implements SimpleUnixInterface
     protected $myConn = null;
     protected $serverConn = null;
 
+    protected $forcedClose = false;
+    protected $reconnectionScheduled = false;
+    protected $cancelTimer = null;
+
     protected $outSystem;
 
     function __construct(...$configs)
@@ -60,11 +64,33 @@ class SimpleBaseClient implements SimpleUnixInterface
             $this->dataMan = new DataManipulation();
 
             
-        $this->myConn->connect($this->uri)->then(
+        $this->connectClient();
+    }
+
+    protected function connectClient()
+    {
+        $promise = null;
+
+        $this->cancelTimer = $this->loop->addTimer(10.0, function () use (&$promise) {
+            $this->outSystem->stdout('Server did not respond in 10s', OutSystem::LEVEL_NOTICE);
+            $promise->cancel();
+            $this->scheduleConnect(5.0);
+        });
+
+        $promise = $this->myConn->connect($this->uri)->then(
             function (ConnectionInterface $serverConn) {
                 $this->serverConn = &$serverConn;
                 $this->connected = true;
 
+                // Reset auxiliar vars
+                $this->forcedClose = false;
+                $this->reconnectionScheduled = false;
+                if ($this->cancelTimer !== null) {
+                    $this->loop->cancelTimer($this->cancelTimer);
+                    $this->cancelTimer = null;
+                }
+
+                $this->outSystem->stdout('Connected', OutSystem::LEVEL_IMPORTANT);
                 ($this->callback['connect'])();
 
                 $serverConn->on('data', function ($data) {
@@ -87,6 +113,9 @@ class SimpleBaseClient implements SimpleUnixInterface
 
                 $serverConn->on('end', function () {
                     ($this->callback['close'])();
+
+                    if (!$this->forcedClose)
+                        $this->scheduleConnect(5.0);
     
                     $this->outSystem->stdout("Connection ended", OutSystem::LEVEL_NOTICE);
                 });
@@ -97,13 +126,15 @@ class SimpleBaseClient implements SimpleUnixInterface
             
                 $serverConn->on('close', function () {
                     ($this->callback['close'])();
+
+                    if (!$this->forcedClose)
+                        $this->scheduleConnect(5.0);
     
                     $this->outSystem->stdout("Closed", OutSystem::LEVEL_NOTICE);
                 });
             }, 
             function ($reason) {
                 $this->outSystem->stdout('Server is not running: ' . $reason, OutSystem::LEVEL_IMPORTANT);
-                $this->outSystem->stdout('Scheduling connection to 5s', OutSystem::LEVEL_NOTICE);
 
                 $this->scheduleConnect(5.0);
             }
@@ -112,13 +143,21 @@ class SimpleBaseClient implements SimpleUnixInterface
 
     public function scheduleConnect($time = 1.0)
     {
+        if ($this->reconnectionScheduled)
+            return;
+
+        $this->reconnectionScheduled = true;
+        $this->outSystem->stdout('Scheduling connection to 5s', OutSystem::LEVEL_NOTICE);
+
         $this->loop->addTimer($time, function () {
-            $this->connect();
+            $this->connectClient();
         });
     }
 
     public function close()
     {
+        $this->forcedClose = true;
+
         $this->outSystem->stdout('Good Bye!', OutSystem::LEVEL_NOTICE);
         $this->serverConn->close();
     }
