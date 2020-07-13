@@ -24,7 +24,7 @@ class SimpleBaseClient implements SimpleUnixInterface
     protected $serverConn = null;
 
     protected $forcedClose = false;
-    protected $reconnectionScheduled = false;
+    protected $reconnectionScheduled = null;
     protected $cancelTimer = null;
 
     protected $outSystem;
@@ -84,7 +84,6 @@ class SimpleBaseClient implements SimpleUnixInterface
 
                 // Reset auxiliar vars
                 $this->forcedClose = false;
-                $this->reconnectionScheduled = false;
                 if ($this->cancelTimer !== null) {
                     $this->loop->cancelTimer($this->cancelTimer);
                     $this->cancelTimer = null;
@@ -112,6 +111,8 @@ class SimpleBaseClient implements SimpleUnixInterface
                 });
 
                 $serverConn->on('end', function () {
+                    $this->connected = false;
+
                     ($this->callback['close'])();
 
                     if (!$this->forcedClose)
@@ -125,6 +126,8 @@ class SimpleBaseClient implements SimpleUnixInterface
                 });
             
                 $serverConn->on('close', function () {
+                    $this->connected = false;
+
                     ($this->callback['close'])();
 
                     if (!$this->forcedClose)
@@ -143,13 +146,14 @@ class SimpleBaseClient implements SimpleUnixInterface
 
     public function scheduleConnect($time = 1.0)
     {
-        if ($this->reconnectionScheduled)
+        if ($this->reconnectionScheduled !== null)
             return;
 
-        $this->reconnectionScheduled = true;
         $this->outSystem->stdout('Scheduling connection to 5s', OutSystem::LEVEL_NOTICE);
 
-        $this->loop->addTimer($time, function () {
+        $this->reconnectionScheduled = 
+            $this->loop->addTimer($time, function () {
+            $this->reconnectionScheduled = null;
             $this->connectClient();
         });
     }
@@ -159,7 +163,14 @@ class SimpleBaseClient implements SimpleUnixInterface
         $this->forcedClose = true;
 
         $this->outSystem->stdout('Good Bye!', OutSystem::LEVEL_NOTICE);
-        $this->serverConn->close();
+
+        if ($this->reconnectionScheduled !== null) {
+            $this->loop->cancelTimer($this->reconnectionScheduled);
+            return; // If is trying to connect dont need to disconnect
+        }
+
+        if ($this->connected)
+            $this->serverConn->close();
     }
 
     public function write($data): bool
