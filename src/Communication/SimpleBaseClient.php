@@ -26,6 +26,7 @@ class SimpleBaseClient implements SimpleUnixInterface
     protected $forcedClose = false;
     protected $reconnectionScheduled = null;
     protected $cancelTimer = null;
+    protected $connPromise = null;
 
     protected $outSystem;
 
@@ -69,15 +70,15 @@ class SimpleBaseClient implements SimpleUnixInterface
 
     protected function connectClient()
     {
-        $promise = null;
+        $this->connPromise = null;
 
-        $this->cancelTimer = $this->loop->addTimer(10.0, function () use (&$promise) {
+        $this->cancelTimer = $this->loop->addTimer(10.0, function () {
             $this->outSystem->stdout('Server did not respond in 10s', OutSystem::LEVEL_NOTICE);
-            $promise->cancel();
+            $this->connPromise->cancel();
             $this->scheduleConnect(5.0);
         });
 
-        $promise = $this->myConn->connect($this->uri)->then(
+        $this->connPromise = $this->myConn->connect($this->uri)->then(
             function (ConnectionInterface $serverConn) {
                 $this->serverConn = &$serverConn;
                 $this->connected = true;
@@ -167,6 +168,14 @@ class SimpleBaseClient implements SimpleUnixInterface
         if ($this->reconnectionScheduled !== null) {
             $this->loop->cancelTimer($this->reconnectionScheduled);
             return; // If is trying to connect dont need to disconnect
+        }
+
+        // Cancel / close connection attempt
+        if ($this->cancelTimer !== null) {
+            $this->loop->cancelTimer($this->cancelTimer);
+            $this->cancelTimer = null;
+
+            $this->connPromise->cancel();
         }
 
         if ($this->connected)
