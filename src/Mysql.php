@@ -3,7 +3,6 @@
 namespace BrunoNatali\Tools;
 
 use React\EventLoop\LoopInterface;
-use React\EventLoop\ExtEventLoop;
 
 class Mysql implements MysqlInterface
 {
@@ -221,34 +220,38 @@ class Mysql implements MysqlInterface
         
         $this->outSystem->stdout("Selecting DB '$dbName': ", false, OutSystem::LEVEL_NOTICE);
 
-        if (!$this->checkResource()) {
-            $this->outSystem->stdout("Fail. Rescheduling...", OutSystem::LEVEL_NOTICE);
-            $this->tryToSolveTheProblem('selectDataBase', \func_get_args(), self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN);
-        }
+        $result = $this->querySql("USE $dbName", $queryResult);
 
-        try {
+        if (\is_bool($result)) 
+            if ($result === false) {
+                if ($queryResult === null) {
+                    $this->outSystem->stdout("Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
 
-            $this->dbResource->exec("USE $dbName");
-            
-            $this->outSystem->stdout("OK", OutSystem::LEVEL_NOTICE);
+                    if ($this->solveProblems)
+                        return $this->tryToSolveTheProblem('selectDataBase', \func_get_args());
 
-            $this->info[$dbName] = [];
+                    return false;
+                }
 
-            return true;
-            
-		} catch (\PDOException $e) {
+                $this->outSystem->stdout("Fail.", OutSystem::LEVEL_NOTICE);
 
-			$this->errorMsg = $e->getMessage();
-            $this->errorCode = $e->getCode();
-            
-            $this->outSystem->stdout("Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
+                return false;
+            } else {
+                $this->outSystem->stdout("OK", OutSystem::LEVEL_NOTICE);
+        
+                $this->info[$dbName] = [];
+        
+                return true;
+            }
+        
+        $this->outSystem->stdout("Scheduled", OutSystem::LEVEL_NOTICE);
 
-            if ($this->solveProblems)
-                return $this->tryToSolveTheProblem('selectDataBase', \func_get_args());
+        return true;
+    }
 
-            return false;
-            
-		}
+    Public function selectTable(string $table)
+    {
+        $this->currentTable = trim($table);
     }
 
     /* OK */
@@ -257,84 +260,78 @@ class Mysql implements MysqlInterface
         if ($db == null) 
             throw new \Exception("Data Base name could not be empty.");
 
-        if (!$this->isAvailable()) 
-            return false;
-
         $this->outSystem->stdout("Creating DB '$db': ", false, OutSystem::LEVEL_NOTICE);
 
-        if (!$this->checkResource()) {
-            $this->outSystem->stdout("Fail. Rescheduling...", OutSystem::LEVEL_NOTICE);
-            $this->tryToSolveTheProblem('newDataBase', \func_get_args(), self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN);
-        }
-
-        try {
-
-			$this->dbResource->exec(
-                "CREATE DATABASE `$db`;
+        $result = $this->querySql(
+            "CREATE DATABASE `$db`;
 				GRANT ALL ON `$db`.* TO '" . $this->mysqlUser . "'@'localhost';
-                FLUSH PRIVILEGES;"
-            );
+                FLUSH PRIVILEGES;", 
+            $queryResult
+        );
 
-            if ($this->mysqlDb === null)
-                $this->mysqlDb = $db;
+        if (\is_bool($result)) 
+            if ($result === false) {
+                if ($queryResult === null) {
+                    $this->outSystem->stdout("Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
 
-            $this->outSystem->stdout("OK", OutSystem::LEVEL_NOTICE);
+                    if ($this->solveProblems)
+                        return $this->tryToSolveTheProblem('newDataBase', \func_get_args());
 
-            return true;
-            
-		} catch (\PDOException $e) {
+                    return false;
+                }
 
-            $this->dbResource->rollBack();
-            
-			$this->errorMsg = $e->getMessage();
-            $this->errorCode = $e->getCode();
+                $this->outSystem->stdout("Fail.", OutSystem::LEVEL_NOTICE);
 
-            $this->outSystem->stdout("Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
-            
-            return false;
-            
-		}
+                return false;
+            } else {
+                if ($this->mysqlDb === null)
+                    $this->mysqlDb = $db;
+
+                $this->outSystem->stdout("OK", OutSystem::LEVEL_NOTICE);
+
+                return true;
+            }
+        
+        $this->outSystem->stdout("Scheduled", OutSystem::LEVEL_NOTICE);
+
+        return true;
     }
 
     public function newTable(string $table) 
     {
         $this->outSystem->stdout("Creating table '$table': ", false, OutSystem::LEVEL_NOTICE);
-        
-        if (!$this->checkResource()) {
-            $this->outSystem->stdout("Fail. Rescheduling...", OutSystem::LEVEL_NOTICE);
-            $this->tryToSolveTheProblem('newTable', \func_get_args(), self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN);
-        }
 
-        $sql = "CREATE table $table(id INT( 11 ) AUTO_INCREMENT PRIMARY KEY);";
+        $result = $this->querySql(
+            "CREATE table $table(id INT( 11 ) AUTO_INCREMENT PRIMARY KEY);", 
+            $queryResult
+        );
 
-        try {
+        if (\is_bool($result)) 
+            if ($result === false) {
+                if ($queryResult === null) {
+                    $this->outSystem->stdout("Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
 
-			$result = $this->dbResource->exec($sql);
+                    if ($this->solveProblems)
+                        return $this->tryToSolveTheProblem('newTable', \func_get_args());
 
-            if (!$this->testResult($result, $sql)) {
-                $this->outSystem->stdout("Fail. Rescheduling...", OutSystem::LEVEL_NOTICE);
-                $this->tryToSolveTheProblem('insert', \func_get_args(), self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN);
+                    return false;
+                }
+
+                $this->outSystem->stdout("Fail.", OutSystem::LEVEL_NOTICE);
+
+                return false;
+            } else {
+                $this->outSystem->stdout("OK", OutSystem::LEVEL_NOTICE);
+
+                if (!isset($this->info[ $this->mysqlDb ][ $table ]))
+                        $this->info[ $this->mysqlDb ][ $table ] = [];
+
+                return true;
             }
+        
+        $this->outSystem->stdout("Scheduled", OutSystem::LEVEL_NOTICE);
 
-            $this->outSystem->stdout("OK", OutSystem::LEVEL_NOTICE);
-
-            if (!isset($this->info[ $this->mysqlDb ][ $table ]))
-                    $this->info[ $this->mysqlDb ][ $table ] = [];
-
-            return true;
-            
-		} catch (\PDOException $e) {
-
-            //$this->dbResource->rollBack();
-            
-			$this->errorMsg = $e->getMessage();
-            $this->errorCode = $e->getCode();
-
-            $this->outSystem->stdout("Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
-            
-            return false;
-            
-		}
+        return true;
     }
     
     public function newColumn($column, array $config = [])
@@ -345,8 +342,6 @@ class Mysql implements MysqlInterface
             'size' => 10,
             'useDefaults' => false 
         ];
-
-        $this->outSystem->stdout("Creating column '$column': ", false, OutSystem::LEVEL_NOTICE);
 
 		switch ($config['type']) {
 			case "VARCHAR":
@@ -375,44 +370,49 @@ class Mysql implements MysqlInterface
 				return(false);
 			    break;
 		}
+
+        $this->outSystem->stdout(
+            "Creating column '$column' as " . $config['type'] . "(" . $config['size'] . "): ", 
+            false, 
+            OutSystem::LEVEL_NOTICE
+        );
 		
 		if(isset($default))
 			$sql .= $default;
 		else 
 			$sql .= "NULL DEFAULT NULL";
             
-        try {
+        $result = $this->querySql($sql, $queryResult);
 
-            $result = $this->dbResource->exec($sql);
+        if (\is_bool($result)) 
+            if ($result === false) {
+                if ($queryResult === null) {
+                    $this->outSystem->stdout("Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
 
-            if (!$this->testResult($result, $sql)) {
-                $this->outSystem->stdout("Fail. Rescheduling...", OutSystem::LEVEL_NOTICE);
-                $this->tryToSolveTheProblem('newColumn', \func_get_args(), self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN);
+                    if ($this->solveProblems)
+                        return $this->tryToSolveTheProblem('newColumn', \func_get_args());
+
+                    return false;
+                }
+
+                $this->outSystem->stdout("Fail.", OutSystem::LEVEL_NOTICE);
+
+                return false;
+            } else {
+                $this->outSystem->stdout("OK", OutSystem::LEVEL_NOTICE);
+
+                if (!isset($this->info[ $this->mysqlDb ][ $config['table'] ][$column]))
+                    $this->info[ $this->mysqlDb ][ $config['table'] ][$column] = [
+                        'type' => $config['type'], 
+                        'size' => $config['size']
+                    ];
+
+                return true;
             }
+        
+        $this->outSystem->stdout("Scheduled", OutSystem::LEVEL_NOTICE);
 
-            $this->outSystem->stdout("OK", OutSystem::LEVEL_NOTICE);
-
-            if (!isset($this->info[ $this->mysqlDb ][ $config['table'] ][$column]))
-                $this->info[ $this->mysqlDb ][ $config['table'] ][$column] = [
-                    'type' => $config['type'], 
-                    'size' => $config['size']
-                ];
-
-            return true;
-            
-        } catch (\PDOException $e) {
-            
-            $this->errorMsg = $e->getMessage();
-            $this->errorCode = $e->getCode();
-
-            $this->outSystem->stdout("Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
-            
-            if ($this->solveProblems)
-                return $this->tryToSolveTheProblem('newColumn', \func_get_args());
-
-            return false;
-            
-        }
+        return true;
 	}
 
     /**
@@ -425,8 +425,11 @@ class Mysql implements MysqlInterface
      *                          (array)  columns list
      *          ]
     */
-    Public function read(...$params): array
+    public function read(...$params): array
     {
+        if (!$this->isAvailable())
+            return [];
+
         $param = ' ';
         $forceSolve = true;
 
@@ -462,14 +465,14 @@ class Mysql implements MysqlInterface
 
         $this->outSystem->stdout(
             "Reading '" . (isset($select) ? $select : '*') . 
-                "' on '$table'" . ($param != ' ' ? " and '$param':" : ':'), 
+                "' on '$table'" . ($param != ' ' ? " and '$param': " : ': '), 
             false, 
             OutSystem::LEVEL_NOTICE
         );
 
         if (!$this->checkResource()) {
             $this->outSystem->stdout("Fail. Rescheduling...", OutSystem::LEVEL_NOTICE);
-            $this->tryToSolveTheProblem('read', \func_get_args(), self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN);
+            return $this->tryToSolveTheProblem('read', \func_get_args(), self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN);
         }
 
         $sql = trim(
@@ -511,133 +514,383 @@ class Mysql implements MysqlInterface
     }
 
     public function insert(array $whereWhat, array $config = [])
-    {
-		//$table = false, $clause = "id", $answer = 1, $db = false
-        
+    {    
         $config += [
-            'table' => $this->currentTable
+            'table' => $this->currentTable,
+            'bulk' => false
         ];
-
-        // 'db' => $this->mysqlDb
 
         if ($config['table'] === null) {
             $this->outSystem->stdout("Insert: Fail. Mismatch config", OutSystem::LEVEL_NOTICE);
             return false;
         }
-        
-        if (\count($whereWhat) === 0) {
-            $this->outSystem->stdout("Insert: Fail. Content is null", OutSystem::LEVEL_NOTICE);
-            return false;
-        }
+
+        $whereWhatBkp = $whereWhat;
 
         /**
          * Check standards
         */
-        foreach ($whereWhat as $where => $what) {
-            $type = $this->getVarType($what);
+        if ($config['bulk']) {
+            if (\count($whereWhatBkp) < 1) {
+                $this->outSystem->stdout("Insert: Fail. Need at least 2 while bulk", OutSystem::LEVEL_NOTICE);
+                return false;
+            }
 
-            if($type === "VARCHAR") {
+            $where = $whereWhatBkp[0];
 
-                if (!isset($this->info[ $this->mysqlDb ][ $config['table'] ]))
-                    $this->info[ $this->mysqlDb ][ $config['table'] ] = [];
-                
-                if (!isset($this->info[ $this->mysqlDb ][ $config['table'] ][$where])) {
-                    $size = $where;
-                    $dbType = $this->getColumnType($size, $config['table']); // column, table
-                    
-                    if ($dbType !== false) {
-                        $this->info[ $this->mysqlDb ][ $config['table'] ][$where] = [
-                            'type' => $dbType, 
-                            'size' => $size
-                        ];
-                    } else {
-                        continue;
-                    }
+            if (!\is_array($where)) {
+                $this->outSystem->stdout("Insert: Fail. Mismatch 'where'", OutSystem::LEVEL_NOTICE);
+                return false;
+            }
+
+            unset($whereWhatBkp[0]);
+
+            foreach ($whereWhatBkp as $key => $what) {
+                if (!\is_array($what)) {
+                    $this->outSystem->stdout("Insert: Fail. Mismatch 'what'($key)", OutSystem::LEVEL_NOTICE);
+                    return false;
                 }
 
-                if ($this->info[ $this->mysqlDb ][ $config['table'] ][$where]['size'] < 
-                    \strlen($what)) {
-
-
-                    if (!$this->changeColumnSpecs(
-                        $where, 
-                        [
-                            'table' => $config['table'],
-                            'type' => $this->info[ $this->mysqlDb ][ $config['table'] ][$where]['type'],
-                            'size' => $this->info[ $this->mysqlDb ][ $config['table'] ][$where]['size']
-                        ]
-                    )) {
-                        $this->outSystem->stdout("Insert: Fail. adjusting column", OutSystem::LEVEL_NOTICE);
-                        return false;
-                    }
+                if (!$this->checkStandardsValues($where, $whereWhatBkp[$key], $config['table'])) {
+                    $this->outSystem->stdout("Insert: Fail. adjusting column", OutSystem::LEVEL_NOTICE);
+                    return false;
                 }
             }
+
+        } else {
+            if (\count($whereWhatBkp) === 0) {
+                $this->outSystem->stdout("Insert: Fail. Content is null", OutSystem::LEVEL_NOTICE);
+                return false;
+            }
+
+            $where = \array_keys($whereWhatBkp);
+            $whatArr = \array_values($whereWhatBkp);
+
+            if (!$this->checkStandardsValues($where, $whatArr, $config['table'])) {
+                $this->outSystem->stdout("Insert: Fail. adjusting column", OutSystem::LEVEL_NOTICE);
+                return false;
+            }
         }
+        
 
-        $sql = "INSERT INTO " . $config['table'] . " (" . 
-            \implode(',', \array_keys($whereWhat)) . ") VALUES (";
+        $sql = "INSERT INTO " . $config['table'] . " (" . \implode(',', $where) . ") VALUES ";
 
-        $debug = $sql;
+        if ($config['bulk']) {
+            foreach ($whereWhatBkp as $what)
+                $sql .= '(' . \implode(',', $what) . '),';
+        
+            $sql{ (\strlen($sql) - 1) } = ';'; // Removes last comma
 
-        $sql .= \implode(',', \array_map(function($v) {return '?';}, $whereWhat)) . ")"; // On PHP 7.4 fn($v) => '?'
+        } else {
+            $sql .= '(' . \implode(',', $whatArr) . ')';
+        }
+              
+        $result = $this->querySql($sql, $queryResult);
+
+        if (\is_bool($result)) 
+            if ($result === false) {
+                if ($queryResult === null) {
+                    $this->outSystem->stdout("Insert: Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
+
+                    if ($this->solveProblems) {
+        
+                        return $this->tryToSolveTheProblem('insert', [$whereWhat, $config]);
+                    }
+
+                    return false;
+                }
+
+                $this->outSystem->stdout("Insert: Fail.", OutSystem::LEVEL_NOTICE);
+
+                return false;
+            } else {
+                $this->outSystem->stdout("$sql: OK", OutSystem::LEVEL_NOTICE);
+        
+                return true;
+            }
+        
+        $this->outSystem->stdout("Insert: Scheduled", OutSystem::LEVEL_NOTICE);
+
+        return true;
+    }
+    
+    public function querySql(string $sql, &$result = null, bool $retry = true)
+    {
+        if (!$this->isAvailable())
+            return ($result = false);
+
+        if (!$this->checkResource()) {
+            $this->outSystem->stdout("Fail SQL-CHK.", false, OutSystem::LEVEL_NOTICE);
+
+            if (!$retry)
+                return ($result = false);
+
+            $trace = \debug_backtrace()[1]; 
+
+            if ($trace['function']) {
+                $this->outSystem->stdout(
+                    " Rescheduling...", 
+                    $this->outSystem->getLastMsgHasEol(),
+                    OutSystem::LEVEL_NOTICE
+                );
+
+                return $this->tryToSolveTheProblem(
+                    $trace['function'], 
+                    $trace['args'], 
+                    self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN,
+                    $trace['class']
+                );
+            } else {
+                $this->outSystem->stdout(
+                    " Unable to retry", 
+                    $this->outSystem->getLastMsgHasEol(),
+                    OutSystem::LEVEL_NOTICE
+                );
+            }
+
+            return ($result = false);
+        }
 
         try {
-            $result = $this->dbResource->prepare($sql);
 
-            if (!$this->testResult($result, null)) {
-                $this->outSystem->stdout("Insert: Fail. Rescheduling...", OutSystem::LEVEL_NOTICE);
-                $this->tryToSolveTheProblem('insert', \func_get_args(), self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN);
+			$result = $this->dbResource->exec($sql);
+
+            if (!$this->testResult($result, $sql)) {
+                $this->outSystem->stdout("Fail SQL-EXEC.", false, OutSystem::LEVEL_NOTICE);
+
+                if (!$retry) 
+                    return false;
+
+                $trace = \debug_backtrace()[1]; 
+
+                if ($trace['function']) {
+                    $this->outSystem->stdout(
+                        " Rescheduling...", 
+                        $this->outSystem->getLastMsgHasEol(),
+                        OutSystem::LEVEL_NOTICE
+                    );
+
+                    return $this->tryToSolveTheProblem(
+                        $trace['function'], 
+                        $trace['args'], 
+                        self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN,
+                        $trace['class']
+                    );
+                } else {
+                    $this->outSystem->stdout(
+                        " Unable to retry", 
+                        $this->outSystem->getLastMsgHasEol(),
+                        OutSystem::LEVEL_NOTICE
+                    );
+                }
+
+                return false;
             }
-
-            $i = 1;
-            foreach ($whereWhat as $what) {
-                $pdoConstant = $this->getPdoConstant($what);
-
-                $debug .= "$i [$pdoConstant] - $what,";
-
-                $result->bindParam($i++, $what, $pdoConstant);
-            }
-            
-            $result->execute();
-            
-            $debug{ (\strlen($debug) - 1) } = ')';
-            $this->outSystem->stdout("$debug: OK", OutSystem::LEVEL_NOTICE);
 
             return true;
-        } catch (\PDOException $e) { 
-            $this->errorMsg = $e->getMessage();
-            $this->errorCode = $e->getCode();
             
-            $this->outSystem->stdout("Insert: Fail. " . $e->getMessage(), OutSystem::LEVEL_NOTICE);
+		} catch (\PDOException $e) {
+            $result = null;
 
-            if ($this->solveProblems) {
-                $args = \func_get_args();
-                $args[1] = $config;
-
-                return $this->tryToSolveTheProblem('insert', $args);
+            // Try to rollback even not is possible to prevent database damages
+            try {
+                $this->dbResource->rollBack();
+            } catch (\PDOException $th) {
+                // Nothing to do here;
             }
             
-            return false;
-        }
-	}
+			$this->errorMsg = $e->getMessage();
+            $this->errorCode = $e->getCode();
 
+            //$this->outSystem->stdout("Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
+            
+            return false;
+            
+		}
+    }
 
     /* OK */
-    private function testResult(&$result, $sql = null)
+    public function changeColumnSpecs($column, array $config = []): bool
+    {
+        $config += [
+            'table' => $this->currentTable,
+            'type' => 'VARCHAR',
+            'size' => 10,
+            'useDefaults' => false 
+        ];
+
+		switch ($config['type']) {
+			case "VARCHAR":
+				$sql = "ALTER TABLE `" . $config['table'] . 
+                    "` CHANGE `$column` `$column` VARCHAR(" . $config['size'] . ");";
+			break;
+			case "TIMESTAMP":
+				$sql = "ALTER TABLE `" . $config['table'] . 
+                    "` CHANGE `$column` `$column` TIMESTAMP ;";
+                if ($config['useDefaults'] === true) 
+                    $default = "NOT NULL DEFAULT CURRENT_TIMESTAMP";
+			break;
+			case "INT":
+				$sql = "ALTER TABLE `" . $config['table'] . 
+                    "` CHANGE `$column` `$column` INT(" . $config['size'] . ") ;";
+			break;
+			default:
+                $this->outSystem->stdout("Fail. Unknow type", OutSystem::LEVEL_NOTICE);
+				return false;
+			break;
+        }
+
+        $this->outSystem->stdout(
+            "Changing column " . $config['table'] . ".$column to " . 
+                $config['type'] . "(" . $config['size'] . "): ", 
+            false, 
+            OutSystem::LEVEL_NOTICE
+        );
+        
+		if (isset($default))
+			$sql .= $default;
+		else 
+            $sql .= "NULL DEFAULT NULL";
+            
+        $result = $this->querySql($sql, $queryResult);
+
+        if (\is_bool($result)) 
+            if ($result === false) {
+                if ($queryResult === null) {
+                    $this->outSystem->stdout("Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
+
+                    if ($this->solveProblems)
+                        return $this->tryToSolveTheProblem('changeColumnSpecs', \func_get_args());
+
+                    return false;
+                }
+
+                $this->outSystem->stdout("Fail.", OutSystem::LEVEL_NOTICE);
+
+                return false;
+            } else {
+                $this->outSystem->stdout("OK", OutSystem::LEVEL_NOTICE);
+        
+                return true;
+            }
+        
+        $this->outSystem->stdout("Scheduled", OutSystem::LEVEL_NOTICE);
+
+        return true;
+	}
+
+    /* OK */
+    public function isAvailable(): bool
+    {
+        if ($this->status >= self::MYSQL_DB_STATUS_CONNECTED) 
+            return true;
+
+        return false;
+    }
+    
+    /* OK */
+    public function getColumnType(&$column, $table = null) 
+    {
+        $this->outSystem->stdout("Get column($column) specs: ", false, OutSystem::LEVEL_NOTICE);
+ 
+        if (!$this->isAvailable())
+            return false;
+
+        if (!$this->checkResource()) {
+            $this->outSystem->stdout("Fail. Rescheduling...", OutSystem::LEVEL_NOTICE);
+            return $this->tryToSolveTheProblem('getColumnType', \func_get_args(), self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN);
+        }
+
+        if ($table == null)
+            $table = $this->currentTable;
+
+        if ($table == null) {
+            $this->outSystem->stdout("Fail. Missing table name", OutSystem::LEVEL_NOTICE);
+            return false;
+        }
+        
+        $sql = 'DESCRIBE ' . $table;
+
+		try {
+            $result = $this->dbResource->query($sql);
+
+            if (!$this->testResult($result, $sql)) {
+                $this->outSystem->stdout("Fail. Rescheduling...", OutSystem::LEVEL_NOTICE);
+                $this->tryToSolveTheProblem('read', \func_get_args(), self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN);
+            }
+            
+            $result = $result->fetchAll(\PDO::FETCH_ASSOC);
+            
+			foreach ($result as $colResp) {
+				if ($colResp['Field'] == $column) {
+                    $result = \explode('(', $colResp['Type']);
+                    
+                    if(isset($result[1])) 
+                        $column = \intval($result[1]);
+
+                    $this->outSystem->stdout($result[0] . "=>($column) OK", OutSystem::LEVEL_NOTICE);
+					return \strtoupper($result[0]);
+				}
+            }
+
+            $this->outSystem->stdout('Fail. Column not found', OutSystem::LEVEL_NOTICE);
+			return false;
+		} catch (\PDOException $e) {
+            $this->outSystem->stdout('Fail. ' . $e->getMessage(), OutSystem::LEVEL_NOTICE);
+			return false;
+		}
+    }
+    
+    /* OK */
+    private function getVarType($val): string
+    {
+		if (\is_string($val))
+			return "VARCHAR";
+        
+		if (\is_int($val))
+            return "INT";
+
+        if ($val === NULL || \is_bool($val)) 
+            return "BOOLEAN";
+        
+        if (\strtotime($val) !== FALSE) 
+            return "TIMESTAMP";
+    }
+    
+    /* OK */
+    private function getPdoConstant($val)
+    {
+        if($val === null) 
+            return \PDO::PARAM_NULL;
+
+        if(\is_string($val)) 
+            return \PDO::PARAM_STR;
+
+        if(\is_int($val)) 
+            return \PDO::PARAM_INT;
+
+        if(\is_bool($val)) 
+            return \PDO::PARAM_BOOL;
+	}
+
+    /* OK */
+    private function testResult(&$result, $sql = null): bool
     {
         if (\is_bool($result)) {
-            $this->outSystem->stdout("Resource is lost", OutSystem::LEVEL_NOTICE);
+            $this->outSystem->stdout("Resource is lost.", null, OutSystem::LEVEL_NOTICE);
             
             $this->connect();
 
             if (!$this->isAvailable())
                 return false;
                 
+            // Execute SQl again 
             if ($sql != null)
                 $result = $this->dbResource->query($sql);
             
-            if(\is_bool($result)) {
-                $this->outSystem->stdout("Resource unrecoverable", OutSystem::LEVEL_NOTICE);
+            // Check if still running on error
+            if (\is_bool($result)) {
+                $this->outSystem->stdout("Resource unrecoverable.", null, OutSystem::LEVEL_NOTICE);
                 return false;
             }
         } 
@@ -645,22 +898,167 @@ class Mysql implements MysqlInterface
         return true;
     }
 
-    Public function useTable(string $table)
+    /* OK */
+    private function checkResource($resource = null, $forceSolve = null): bool
     {
-        $this->currentTable = trim($table);
+        if ($resource === null) 
+            $resource = &$this->dbResource;
+
+        if (!$resource || \is_bool($resource)) {
+            // Pause queue  ASAP
+            $this->queue->pause();
+
+            if ($forceSolve === null)
+                $forceSolve = $this->solveProblems;
+
+            $this->connect($forceSolve);
+
+            return $this->isAvailable();
+        }
+
+        return true;
     }
 
-    private function tryToSolveTheProblem(string $funcName, array $funcArgs = [], $retSpecific = false) 
+    private function checkStandardsValues(array $where, array &$whatArr, string $table = null)
     {
+        if ($table === null) {
+            $table = $this->currentTable;
 
-        if ($retSpecific === self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN)
+            if ($table === null)
+                return false;
+        }
+
+        if (count($where) !== count($whatArr))
+            return false;
+
+        foreach ($whatArr as $i => $what) {
+            if (\is_array($what)) 
+                return false;
+
+            $type = $this->getVarType($what);
+            
+            if (!isset($this->info[ $this->mysqlDb ][ $table ]))
+                $this->info[ $this->mysqlDb ][ $table ] = [];
+                
+            if (!isset($this->info[ $this->mysqlDb ][ $table ][ $where[$i] ])) {
+                $size = $where[$i];
+                $dbType = $this->getColumnType($size, $table); // column, table
+                
+                if ($dbType !== false) {
+                    $this->info[ $this->mysqlDb ][ $table ][ $where[$i] ] = [
+                        'type' => $dbType, 
+                        'size' => $size
+                    ];
+                } else {
+                    $this->info[ $this->mysqlDb ][ $table ][ $where[$i] ] = [
+                        'type' => $type, 
+                        'size' => ($type === "VARCHAR" ? \strlen($what) : 10)
+                    ];
+                }
+            }
+
+            if ($this->info[ $this->mysqlDb ][ $table ][ $where[$i] ]['type'] === "VARCHAR") {
+
+                $whatLen = \strlen((string) $what);
+
+                $whatArr[$i] = "'$what'";
+
+                if ($this->info[ $this->mysqlDb ][ $table ][ $where[$i] ]['size'] < $whatLen) {
+                    if (!$this->changeColumnSpecs(
+                        $where[$i], 
+                        [
+                            'table' => $table,
+                            'type' => "VARCHAR",
+                            'size' => $whatLen
+                        ]
+                    ))
+                        return false;
+                        
+                    $this->info[ $this->mysqlDb ][ $table ][ $where[$i] ]['size'] = $whatLen; // Update registered size
+                }
+            } else if ($this->info[ $this->mysqlDb ][ $table ][ $where[$i] ]['type'] !== $type) {
+                // If database type is different than var type
+
+                if ($type === "VARCHAR") { 
+                    $whatLen = \strlen((string) $what);
+    
+                    $whatArr[$i] = "'$what'";
+
+                    if (!$this->changeColumnSpecs(
+                        $where[$i], 
+                        [
+                            'table' => $table,
+                            'type' => "VARCHAR", // Change DB type to VARCHAR
+                            'size' => $whatLen
+                        ]
+                    ))
+                        return false;
+                        
+                    // Force update registered size
+                    $this->info[ $this->mysqlDb ][ $table ][ $where[$i] ]['size'] = $whatLen; 
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /* OK */
+    private function scheduleConnection(number $time = null, bool $forceSolve = null)
+    {
+        $this->status = self::MYSQL_DB_STATUS_RECONNECTING;
+
+        if ($time === null) 
+            $time = self::MYSQL_RETRY_CONNECTION;
+            
+        $this->outSystem->stdout('Scheduling reconnection (' . $time . 's) ...', OutSystem::LEVEL_NOTICE);
+
+        if (!isset($this->timers['connection'])) {
+            $this->timers['connection'] = $this->loop
+                ->addTimer($time, function () use ($forceSolve) {
+                // Pre reset timer, but set as in use
+                $this->timers['connection'] = true; 
+
+                $this->outSystem->stdout('Trying schedulled connection.', OutSystem::LEVEL_NOTICE);
+
+                $this->connect($forceSolve);
+
+                unset($this->timers['connection']);
+            });
+        }
+    }
+
+    private function tryToSolveTheProblem(
+        string $funcName = null, 
+        array $funcArgs = [], 
+        $retSpecific = false,
+        string $class = __NAMESPACE__
+    ) {
+        if ($funcName === null)
+            $funcName = \debug_backtrace()[1]['function'];
+
+        if ($funcName === null) {
+            $this->outSystem->stdout(
+                'Trying to solve the error: Fail. No callback name', 
+                OutSystem::LEVEL_NOTICE
+            );
+        }
+
+        if ($retSpecific === self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN) {
             $this->queue->push( function () {
                 $this->outSystem->stdout("Retrying scheduled '$funcName'", OutSystem::LEVEL_NOTICE);
-                \call_user_func_array([$this, $funcName], $funcArgs);
+                \call_user_func_array(
+                    [
+                        ($class === __NAMESPACE__ ? $this : $class), 
+                        $funcName
+                    ], 
+                    $funcArgs
+                );
             });
-        else if (!\is_bool($retSpecific)) {
 
+            return $retSpecific;
         }
+        
 
         if ($this->errorCode === null) {
             $this->outSystem->stdout("Could not solve, no error code", OutSystem::LEVEL_NOTICE);
@@ -739,7 +1137,11 @@ class Mysql implements MysqlInterface
                     $this->outSystem->stdout('Fail. Unable to find table name', OutSystem::LEVEL_NOTICE);
                     return $retSpecific;
                 }
-			break;
+            break;
+            /**
+             * [ERROR] Column doesn't exist
+             * [SOLUTION] Creates column name
+            */
 			case "42S22":
 				if (!isset($funcArgs[0])) {
                     $this->outSystem->stdout(
@@ -762,34 +1164,58 @@ class Mysql implements MysqlInterface
                 } 
                 
 				if ($funcName == "insert") {
+                    if (\count($funcArgs) === 2 && 
+                        isset($funcArgs[1]['table'])) {
+                        
+                        if ($funcArgs[1]['bulk']) { // Create based on first 
+                            /**
+                             * 0 => col_1, col_2 ...
+                             * 1 => val_1, val_2 ...
+                             * 2 => Foo, Bar ...
+                            */
+                            $key = array_search($err_msg[1], $funcArgs[0][0]);
 
-                    if (\count($funcArgs) === 2 && isset($funcArgs[0][ $err_msg[1] ])) {
-                        $columnValue = &$funcArgs[0][ $err_msg[1] ];
+                            if ($key !== false && isset($funcArgs[0][1][$key])) {
+                                $len = \strlen((string) $funcArgs[0][1][$key]);
 
-                        $type = $this->getVarType($columnValue);
-
-                        // $table, $type = "BOOLEAN", $size = 10, $default = FALSE, $db = FALSE
-                        //$parameters[2], $type, $desired_value
-                        if (!$this->newColumn(
-                            $err_msg[1], 
-                            [
-                                'table' => $funcArgs[1]['table'],
-                                'type' => $type,
-                                'size' => (
-                                    \is_string($columnValue) ?
-                                    \strlen($columnValue) :
-                                    (
-                                        ($cnt = \strlen((string) $columnValue)) > 10 ?
-                                        10 :
-                                        $cnt
+                                if (!$this->newColumn(
+                                    $err_msg[1], 
+                                    [
+                                        'table' => $funcArgs[1]['table'],
+                                        'type' => $this->getVarType($funcArgs[0][1][$key]),
+                                        'size' => (
+                                            \is_string($funcArgs[0][1][$key]) ?
+                                            $len :
+                                            ($len > 10 ? 10 : $len )
+                                        )
+        
+                                    ]
+                                )) 
+                                    return $retSpecific;
+        
+                                break;
+                            }
+                            
+                        } else if (isset($funcArgs[0][ $err_msg[1] ])) {
+                            $len = \strlen((string) $funcArgs[0][ $err_msg[1] ]);
+    
+                            if (!$this->newColumn(
+                                $err_msg[1], 
+                                [
+                                    'table' => $funcArgs[1]['table'],
+                                    'type' => $this->getVarType($funcArgs[0][ $err_msg[1] ]),
+                                    'size' => (
+                                        \is_string($funcArgs[0][ $err_msg[1] ]) ?
+                                        $len :
+                                        ($len > 10 ? 10 : $len )
                                     )
-                                )
-
-                            ]
-                        )) 
-                            return $retSpecific;
-
-                        break;
+    
+                                ]
+                            )) 
+                                return $retSpecific;
+    
+                            break;
+                        }
                     }
                 }
                 
@@ -815,222 +1241,15 @@ class Mysql implements MysqlInterface
         /**
          * After the problem is solved, try running the previous function again
         */
-        \call_user_func_array([$this, $funcName], $funcArgs);
-
-        return true;
-        
-		if ($callback !== NULL) {
-			if($parameters === NULL){
-				return call_user_func(array($this, $callback));
-			} else {
-				return call_user_func_array(array($this, $callback), $parameters);
-			}
-		}
-		return TRUE;
-    }
-    
-    /* OK */
-    private function getVarType($val): string
-    {
-		if (\is_string($val)) {
-			return "VARCHAR";
-        } 
-        
-		if (\is_int($val))
-            return "INT";
-
-        if ($val === NULL || \is_bool($val)) 
-            return "BOOLEAN";
-        
-        if (\strtotime($val) !== FALSE) 
-            return "TIMESTAMP";
-    }
-    
-    /* OK */
-    public function getColumnType(&$column, $table = null) 
-    {
-        $this->outSystem->stdout("Get column($column) specs: ", false, OutSystem::LEVEL_NOTICE);
-
-        if (!$this->checkResource()) {
-            $this->outSystem->stdout("Fail. Rescheduling...", OutSystem::LEVEL_NOTICE);
-            $this->tryToSolveTheProblem('getColumnType', \func_get_args(), self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN);
-        }
-
-        if ($table == null)
-            $table = $this->currentTable;
-
-        if ($table == null) {
-            $this->outSystem->stdout("Fail. Missing table name", OutSystem::LEVEL_NOTICE);
-            return false;
-        }
-        
-        $sql = 'DESCRIBE ' . $table;
-
-		try {
-            $result = $this->dbResource->query($sql);
-
-            if (!$this->testResult($result, $sql)) {
-                $this->outSystem->stdout("Fail. Rescheduling...", OutSystem::LEVEL_NOTICE);
-                $this->tryToSolveTheProblem('read', \func_get_args(), self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN);
-            }
-            
-            $result = $result->fetchAll(\PDO::FETCH_ASSOC);
-            
-			foreach ($result as $colResp) {
-				if ($colResp['Field'] == $column) {
-                    $result = \explode('(', $colResp['Type']);
-                    
-                    if(isset($result[1])) 
-                        $column = \intval($result[1]);
-
-                    $this->outSystem->stdout($result[0] . "=>($column) OK", OutSystem::LEVEL_NOTICE);
-					return \strtoupper($result[0]);
-				}
-            }
-
-            $this->outSystem->stdout('Fail. Column not found', OutSystem::LEVEL_NOTICE);
-			return false;
-		} catch (\PDOException $e) {
-            $this->outSystem->stdout('Fail. ' . $e->getMessage(), OutSystem::LEVEL_NOTICE);
-			return false;
-		}
-    }
-    
-    /* OK */
-    private function getPdoConstant($val)
-    {
-        if($val === NULL) 
-            return \PDO::PARAM_NULL;
-
-        if(\is_string($val)) 
-            return \PDO::PARAM_STR;
-
-        if(\is_int($val)) 
-            return \PDO::PARAM_INT;
-
-        if(\is_bool($val)) 
-            return \PDO::PARAM_BOOL;
-	}
-
-    /* OK */
-    public function changeColumnSpecs($column, array $config = []): bool
-    {
-        $config += [
-            'table' => $this->currentTable,
-            'type' => 'VARCHAR',
-            'size' => 10,
-            'useDefaults' => false 
-        ];
-
-        $this->outSystem->stdout(
-            "Changing column " . $config['table'] . ".$column : ", 
-            OutSystem::LEVEL_NOTICE
+        return \call_user_func_array(
+            [
+                ($class === __NAMESPACE__ ? $this : $class), 
+                $funcName
+            ], 
+            $funcArgs
         );
 
-        if (!$this->checkResource()) {
-            $this->outSystem->stdout("Fail. Rescheduling...", OutSystem::LEVEL_NOTICE);
-            $this->tryToSolveTheProblem('changeColumnSpecs', \func_get_args(), self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN);
-        }
-
-		switch ($config['type']) {
-			case "VARCHAR":
-				$sql = "ALTER TABLE `" . $config['table'] . 
-                    "` CHANGE `$column` `$column` VARCHAR(" . $config['size'] . ");";
-			break;
-			case "TIMESTAMP":
-				$sql = "ALTER TABLE `" . $config['table'] . 
-                    "` CHANGE `$column` `$column` TIMESTAMP ;";
-                if ($config['useDefaults'] === true) 
-                    $default = "NOT NULL DEFAULT CURRENT_TIMESTAMP";
-			break;
-			case "INT":
-				$sql = "ALTER TABLE `" . $config['table'] . 
-                    "` CHANGE `$column` `$column` INT(" . $config['size'] . ") ;";
-			break;
-			default:
-                $this->outSystem->stdout("Fail. Unknow type", OutSystem::LEVEL_NOTICE);
-				return false;
-			break;
-        }
-        
-		if (isset($default))
-			$sql .= $default;
-		else 
-            $sql .= "NULL DEFAULT NULL";
-            
-		try {
-            $result = $this->dbResource->query($sql);
-
-            if (!$this->testResult($result, $sql)) {
-                $this->outSystem->stdout("Fail. Rescheduling...", OutSystem::LEVEL_NOTICE);
-                $this->tryToSolveTheProblem('read', \func_get_args(), self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN);
-            }
-            
-            $this->outSystem->stdout("OK", OutSystem::LEVEL_NOTICE);
-
-			return true;
-		} catch (\PDOException $e) { 
-            //$this->dbResource->rollBack();
-            
-            $this->outSystem->stdout("Fail. " . $e->getMessage(), OutSystem::LEVEL_NOTICE);
-            
-			return false;
-		}
-	}
-
-    /* OK */
-    public function isAvailable(): bool
-    {
-        if ($this->status >= self::MYSQL_DB_STATUS_CONNECTED) 
-            return true;
-
-        return false;
-    }
-
-    /* OK */
-    private function checkResource($resource = null, $forceSolve = null): bool
-    {
-        if ($resource === null) 
-            $resource = &$this->dbResource;
-
-        if (!$resource || \is_bool($resource)) {
-            // Pause queue  ASAP
-            $this->queue->pause();
-
-            if ($forceSolve === null)
-                $forceSolve = $this->solveProblems;
-
-            $this->connect($forceSolve);
-
-            return $this->isAvailable();
-        }
-
         return true;
-    }
-
-    /* OK */
-    private function scheduleConnection(number $time = null, bool $forceSolve = null)
-    {
-        $this->status = self::MYSQL_DB_STATUS_RECONNECTING;
-
-        if ($time === null) 
-            $time = self::MYSQL_RETRY_CONNECTION;
-            
-        $this->outSystem->stdout('Scheduling reconnection (' . $time . 's) ...', OutSystem::LEVEL_NOTICE);
-
-        if (!isset($this->timers['connection'])) {
-            $this->timers['connection'] = $this->loop
-                ->addTimer($time, function () use ($forceSolve) {
-                // Pre reset timer, but set as in use
-                $this->timers['connection'] = true; 
-
-                $this->outSystem->stdout('Trying schedulled connection.', OutSystem::LEVEL_NOTICE);
-
-                $this->connect($forceSolve);
-
-                unset($this->timers['connection']);
-            });
-        }
     }
 }
 ?>
