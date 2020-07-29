@@ -34,12 +34,15 @@ class OutSystem implements OutSystemInterface
         return 'OutSystem';
     }
 
-    Private function appConfigure(array &$config): void
+    private function appConfigure(array &$config): void
     {
-        foreach($config as $name => $value){
-            $name = (is_string($name) ? strtoupper(trim($name)) : $name);
-            if (is_string($value)) $value = trim($value);
-			switch(true){
+        foreach($config as $name => $value) {
+            if (\is_string($name))
+                $name = \strtoupper(\trim($name));
+            if (\is_string($value)) 
+                $value = trim($value);
+            
+            switch(true) {
                 case ($name === "OUTSYSTEMENABLED"):
                     if (!is_bool($value)) throw new \Exception( "Configuration '$name' must be boolean.");
                     $this->outSystemEnabled = $value;
@@ -78,17 +81,17 @@ class OutSystem implements OutSystemInterface
         }
     }
 
-    Public function enable()
+    public function enable()
     {
         $this->outSystemEnabled = true;
     }
 
-    Public function disable()
+    public function disable()
     {
         $this->outSystemEnabled = false;
     }
 
-    Public function enableEol()
+    public function enableEol()
     {
         $this->outSystemEol = true;
     }
@@ -98,32 +101,43 @@ class OutSystem implements OutSystemInterface
         $this->outSystemEol = false;
     }
 
-    Public function setPreferedEol($eolMsg = null)
+    public function setPreferedEol($eolMsg = null)
     {
         $this->outSystemEolMsg = $eolMsg;
     }
 
-    Public function stdout(...$data): bool
+    public function getLastMsgHasEol(): bool
     {
-        if (!$this->outSystemEnabled) return false;
+        return $this->lastMsgHasEol;
+    }
+
+    public function stdout(...$data): bool
+    {
+        if (!$this->outSystemEnabled) 
+            return false;
 
         $msg = null;
         $eol = $this->outSystemEol;
         $level = $this->defaultLevel;
-        foreach ($data as $param) {
-            if (is_string($param)) { // Message 
+
+        foreach ($data as $param)
+            if (\is_string($param)) // Message 
                 $msg = $param;
-            } else if (is_bool($param)) { // line end enable / disable
+            else if (\is_bool($param)) // line end enable / disable
                 $eol = $param;
-            } else if (is_int($param)) { // change debug level for current message
+            else if (\is_int($param)) // change debug level for current message
                 $level = $param;
-            }
-        }
+            else if (\is_null($param)) // replicates last eol state
+                $eol = $this->lastMsgHasEol;
 
-        if ($msg === null) return false;
-        if ($level < $this->outSystemLevel) return false;
+        if ($msg === null) 
+            return false;
 
-        if ($this->lastMsgHasEol) // input Time Stamp at beginning if last msg had LF
+        if ($level < $this->outSystemLevel) 
+            return false;
+
+        // input Time Stamp at beginning if last msg had LF
+        if ($this->lastMsgHasEol) 
             $msg = "[" . DATE("y-m-d H:i:s") . "]$this->outSystemName " . 
                 (static::isPrintable($msg) ? $msg : '(hex)' . \bin2hex($msg)); 
         
@@ -136,7 +150,7 @@ class OutSystem implements OutSystemInterface
         return true;
     }
 
-    Public static function dstdout(...$data): bool
+    public static function dstdout(...$data): bool
     {
         $msg = null;
         $eol = (SystemInteraction::isCli() ? PHP_EOL : "<br>");
@@ -173,7 +187,7 @@ class OutSystem implements OutSystemInterface
         return true;
     }
 
-    Public static function helpHandleAppName(array $receivedConfig, array $myConfig): array
+    public static function helpHandleAppName(array $receivedConfig, array $myConfig): array
     {
         if (!isset($myConfig["outSystemName"]) || !isset($receivedConfig["outSystemName"])) {
             return array_merge($receivedConfig, $myConfig);
