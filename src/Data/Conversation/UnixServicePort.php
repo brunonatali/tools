@@ -32,8 +32,11 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
         $this->server->onData(function ($data, $id) {
             $data = \json_decode($data, true);
 
-            if (!\is_array($data) || !isset($data['ident']))
-                $this->server->disconnectClient($id); // Molformed data causes client disconnection
+            if (!\is_array($data) || !isset($data['ident'])) {
+                 // Molformed data causes client disconnection without warning
+                $this->server->disconnectClient($id);
+                return;
+            }
 
             $result = $this->parseData($data, $id);
             
