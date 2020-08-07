@@ -107,7 +107,9 @@ class Queue
 	// Count could be true (run to infinite until have elements on the list, false, to run once or number of items that it must collect and parse)
     Public function next($count = true)
     {
-        if ($this->main->isEmpty()) return null;
+        if ($this->main->isEmpty()) 
+            return null;
+            
         if (!$this->enabled || $this->running) {
             $this->waitToRun = true;
             return false;
@@ -144,8 +146,27 @@ class Queue
         $this->enabled = true;
         if ($this->waitToRun) {
             $this->waitToRun = false;
-            if ($continue) $this->next();
+            if ($continue) 
+                $this->next();
         }
+    }
+
+    public function empty(int $max = 100): bool
+    {
+        if ($this->main->isEmpty()) 
+            return true;
+
+        $empty = false;
+        while ($max--) {
+            try {
+                $this->main->dequeue();
+            } catch (\Exception $e) {
+                $empty = true; // Throw when is empty
+                $max = 0;
+            }
+        }
+
+        return $empty;
     }
 
     Public function isIdInTheList($id)
