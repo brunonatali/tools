@@ -218,7 +218,7 @@ class SimpleBaseServer implements SimpleBaseServerInterface
         return false;
     }
 
-    public function disconnectClient($id = null): boolval
+    public function disconnectClient($id = null): bool
     {
         if ($id !== null) {
             if (\is_array($id)) {
