@@ -39,4 +39,23 @@ class UsefulFunction
 
         return $merged;
     }
+
+    /**
+     * List folder contents
+    */
+    public static function listFolder(string $path, bool $onlyDir = false): array
+    {
+        $list = \array_diff(\scandir($path), ['..', '.']);
+
+        if ($onlyDir) {
+            if ($path{ (\strlen($path) -1) } !== '/') 
+                $path .= '/'; 
+
+            foreach ($list as $index => $name) 
+                if (!\is_dir($path . $name))
+                    unset($list[ $index ]);
+        }
+
+        return $list;
+    }
 }
