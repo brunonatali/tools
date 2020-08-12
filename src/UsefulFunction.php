@@ -58,4 +58,22 @@ class UsefulFunction
 
         return $list;
     }
+
+    /**
+     * Traces functions and / or classes 
+    */
+    public static function debug_backtrace(array &$function = [], array &$class = [])
+    {
+        foreach (debug_backtrace() as $trace) {
+            if ($trace['function'] === 'debug_backtrace')
+                continue;
+            
+            if (isset($trace['class']))
+                $class[] = $trace['class'];
+
+            $function[] = $trace['function'];
+        }
+        
+        return null;
+    }
 }
