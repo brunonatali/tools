@@ -14,13 +14,18 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
 
     public $info = null;
 
+    private $globalStatus = 0;
+
+    private $globalStatusHistory;
+
     function __construct(&$loop, string $name, array $config = [])
     {
         $config += [
             "outSystemName" => 'USP', // UnixServicePort
             "outSystemEnabled" => true, // Enable stdout 
             "autoStart" => false, // disable auto start
-            "serializeData" => true // prevent data concatenation enabled
+            "serializeData" => true, // prevent data concatenation enabled
+            "statusStore" => 10 // Store about 10 status code
         ];
 
         $this->server = new SimpleUnixServer(
@@ -51,6 +56,30 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
 
         $outSystem = new OutSystem($config);
 
+        $this->globalStatusHistory = \array_fill(0, \intval($config['statusStore']), null);
+
+        /**
+         * Register some generic parsers
+         * Note. This could be overridden from caller
+        */
+        $this->parsers[ self::DATA_TYPE_STATUS ] = [
+            'ident' => self::DATA_TYPE_STATUS,
+            'callback' => function ($content, $id, $myServer) {
+                return \json_encode(
+                    [
+                        'ident' => self::DATA_TYPE_STATUS,
+                        'info' => [
+                            'now' => $this->globalStatus,
+                            'history' => $this->globalStatusHistory
+                        ]
+                    ]
+                );
+            }
+        ];
+
+        /**
+         * Auto start
+        */
         if ($config['autoStart'])
             $this->server->start();
     }
@@ -62,23 +91,23 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
 
     private function parseData(array $data, int $id)
     {
-        foreach ($this->parsers as $key => $parser) {
-            if ($data['ident'] === $parser['ident']) {
-                $myServer = &$this->server;
-                return ($parser['callback'])(
-                    (isset($data['content']) ? $data['content'] : []), 
-                    $id, 
-                    $myServer
-                );
-            }
+        if (isset($this->parsers[ $data['ident'] ])) {
+            $myServer = &$this->server;
+
+            return ($this->parsers[ $data['ident'] ]['callback'])(
+                (isset($data['content']) ? $data['content'] : []), 
+                $id, 
+                $myServer
+            );
         }
 
         return false;
     }
 
+    
     public function addParser(int $parserIdentifier, callable $callback)
     {
-        if(!isset($this->parsers[ $parserIdentifier ])) {
+        if (!isset($this->parsers[ $parserIdentifier ])) {
             $this->parsers[ $parserIdentifier ] = [
                 'ident' => $parserIdentifier,
                 'callback' => $callback
@@ -88,6 +117,49 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
         }
 
         return false;
+    }
+
+    
+    public function reportStatus(int $statusCode, bool $broadcast = true, string $info = null)
+    {
+        $this->globalStatus = $statusCode;
+
+        $index = null;
+        foreach ($this->globalStatusHistory as $key => $value) 
+            if ($value === null) {
+                $index = $key;
+                break;
+            }
+
+        $history = [
+            'code' => $statusCode,
+            'info' => $info,
+            'time' => \time()
+        ];
+
+        if ($index !== null)
+            $this->globalStatusHistory[$index] = $history;
+        else {
+            $last = count($this->globalStatusHistory);
+            \array_unshift(
+                $this->globalStatusHistory, 
+                $history
+            );
+            unset($this->globalStatusHistory[$last]);
+        }
+
+        if ($broadcast)
+            $this->server->write(
+                \json_encode(
+                    [
+                        'ident' => self::DATA_TYPE_STATUS,
+                        'info' => [
+                            'now' => $this->globalStatus,
+                            'history' => $this->globalStatusHistory
+                        ]
+                    ]
+                )
+            );
     }
 
     public function serverAnswerAck($id)
