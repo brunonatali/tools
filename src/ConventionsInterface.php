@@ -14,4 +14,6 @@ interface ConventionsInterface
     const DATA_TYPE_NACK = 0X1034; /* Nonconformity */
 
     const DATA_TYPE_STATUS = 0x1050; /* Get / Return current status */
+
+    const ACTION_CLEAR_STATUS = 0x2000; /* Clear current status -> OK (0) */ 
 }

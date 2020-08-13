@@ -62,6 +62,7 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
          * Register some generic parsers
          * Note. This could be overridden from caller
         */
+        // Send current module status 
         $this->parsers[ self::DATA_TYPE_STATUS ] = [
             'ident' => self::DATA_TYPE_STATUS,
             'callback' => function ($content, $id, $myServer) {
@@ -74,6 +75,16 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
                         ]
                     ]
                 );
+            }
+        ];
+
+        // Clear current module status (leaving history untouched) 
+        $this->parsers[ self::ACTION_CLEAR_STATUS ] = [
+            'ident' => self::ACTION_CLEAR_STATUS,
+            'callback' => function ($content, $id, $myServer) {
+                $this->globalStatus = 0;
+
+                return true;
             }
         ];
 
