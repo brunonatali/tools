@@ -14,7 +14,7 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
 
     public $info = null;
 
-    protected $globalStatus = 0;
+    private $globalStatus = 0;
 
     private $globalStatusHistory;
 
@@ -171,6 +171,11 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
                     ]
                 )
             );
+    }
+
+    public function getGlobalStatus()
+    {
+        return $this->globalStatus;
     }
 
     public function serverAnswerAck($id)

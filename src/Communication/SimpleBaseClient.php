@@ -148,6 +148,11 @@ class SimpleBaseClient implements SimpleUnixInterface
             }
         )->otherwise(
             function ($reason) {
+                if ($this->cancelTimer !== null) {
+                    $this->loop->cancelTimer($this->cancelTimer);
+                    $this->cancelTimer = null;
+                }
+                
                 $this->outSystem->stdout(
                     'Server is not running: ' . $reason->getMessage(), 
                     OutSystem::LEVEL_IMPORTANT
