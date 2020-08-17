@@ -136,11 +136,22 @@ class SimpleBaseClient implements SimpleUnixInterface
     
                     $this->outSystem->stdout("Closed", OutSystem::LEVEL_NOTICE);
                 });
-            }, 
+            }
+        )->otherwise(
             function ($reason) {
-                $this->outSystem->stdout('Server is not running: ' . $reason, OutSystem::LEVEL_IMPORTANT);
+                $this->outSystem->stdout(
+                    'Server is not running: ' . $reason->getMessage(), 
+                    OutSystem::LEVEL_IMPORTANT
+                );
 
                 $this->scheduleConnect(5.0);
+            }
+        )->otherwise(
+            function ($e) {
+                //var_dump($e->getMessage());
+                $this->outSystem->stdout("Some other error received on connect. Uncoment line " . ((int) __LINE__ - 1), 
+                    OutSystem::LEVEL_NOTICE
+                );
             }
         );
     }
