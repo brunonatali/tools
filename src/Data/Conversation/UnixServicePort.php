@@ -14,7 +14,7 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
 
     public $info = null;
 
-    private $globalStatus = 0;
+    protected $globalStatus = 0;
 
     private $globalStatusHistory;
 
