@@ -94,6 +94,10 @@ class SimpleBaseClient implements SimpleUnixInterface
                     $this->loop->cancelTimer($this->cancelTimer);
                     $this->cancelTimer = null;
                 }
+                if ($this->reconnectionScheduled !== null) {
+                    $this->loop->cancelTimer($this->reconnectionScheduled);
+                    $this->reconnectionScheduled = null;
+                }
 
                 $this->outSystem->stdout('Connected', OutSystem::LEVEL_IMPORTANT);
                 ($this->callback['connect'])();
