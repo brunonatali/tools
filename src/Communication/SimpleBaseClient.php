@@ -41,6 +41,9 @@ class SimpleBaseClient implements SimpleUnixInterface
         if (!isset($this->callback['close']))
             $this->callback['close'] = function () {};
 
+        if (!isset($this->callback['timeout']))
+            $this->callback['timeout'] = function () {};
+
         $clientName = 'SUC'; // SimpleUnixClient
         $this->userConfig = [];
         foreach ($configs as $param) {
@@ -74,7 +77,9 @@ class SimpleBaseClient implements SimpleUnixInterface
 
         $this->cancelTimer = $this->loop->addTimer(10.0, function () {
             $this->outSystem->stdout('Server did not respond in 10s', OutSystem::LEVEL_NOTICE);
+
             $this->connPromise->cancel();
+
             $this->scheduleConnect(5.0);
         });
 
@@ -163,6 +168,8 @@ class SimpleBaseClient implements SimpleUnixInterface
 
         $this->outSystem->stdout('Scheduling connection to 5s', OutSystem::LEVEL_NOTICE);
 
+        ($this->callback['timeout'])();
+
         $this->reconnectionScheduled = 
             $this->loop->addTimer($time, function () {
             $this->reconnectionScheduled = null;
@@ -208,30 +215,23 @@ class SimpleBaseClient implements SimpleUnixInterface
         return true;
     }
 
-    public function onData($function)
+    public function onData(callable $function)
     {
-        if (!\is_callable($function)) 
-            return false;
-
         $this->callback['data'] = $function;
-        return true;
     }
     
-    public function onClose($function)
+    public function onConnect(callable $function)
     {
-        if (!\is_callable($function)) 
-            return false;
-
-        $this->callback['close'] = $function;
-        return true;
-    }
-    
-    public function onConnect($function)
-    {
-        if (!\is_callable($function)) 
-            return false;
-
         $this->callback['connect'] = $function;
-        return true;
+    }
+    
+    public function onTimeOut(callable $function)
+    {
+        $this->callback['timeout'] = $function;
+    }
+    
+    public function onClose(callable $function)
+    {
+        $this->callback['close'] = $function;
     }
 }

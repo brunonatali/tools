@@ -11,10 +11,12 @@ interface SimpleBaseClientInterface
 
     public function write($data): bool;
 
-    public function onData($function);
+    public function onData(callable $function);
 
-    public function onClose($function);
+    public function onConnect(callable $function);
 
-    public function onConnect($function);
+    public function onTimeOut(callable $function);
+    
+    public function onClose(callable $function);
 
 }
