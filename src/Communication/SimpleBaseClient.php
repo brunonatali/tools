@@ -123,7 +123,7 @@ class SimpleBaseClient implements SimpleUnixInterface
                 $serverConn->on('end', function () {
                     $this->connected = false;
 
-                    ($this->callback['close'])();
+                    ($this->callback['close'])($this->forcedClose);
 
                     if (!$this->forcedClose)
                         $this->scheduleConnect(5.0);
@@ -138,7 +138,7 @@ class SimpleBaseClient implements SimpleUnixInterface
                 $serverConn->on('close', function () {
                     $this->connected = false;
 
-                    ($this->callback['close'])();
+                    ($this->callback['close'])($this->forcedClose);
 
                     if (!$this->forcedClose)
                         $this->scheduleConnect(5.0);
@@ -152,7 +152,7 @@ class SimpleBaseClient implements SimpleUnixInterface
                     $this->loop->cancelTimer($this->cancelTimer);
                     $this->cancelTimer = null;
                 }
-                
+
                 $this->outSystem->stdout(
                     'Server is not running: ' . $reason->getMessage(), 
                     OutSystem::LEVEL_IMPORTANT
@@ -242,5 +242,10 @@ class SimpleBaseClient implements SimpleUnixInterface
     public function onClose(callable $function)
     {
         $this->callback['close'] = $function;
+    }
+
+    public function isConnected(): bool
+    {
+        return $this->connected;
     }
 }
