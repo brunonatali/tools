@@ -118,16 +118,10 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
     
     public function addParser(int $parserIdentifier, callable $callback)
     {
-        if (!isset($this->parsers[ $parserIdentifier ])) {
-            $this->parsers[ $parserIdentifier ] = [
-                'ident' => $parserIdentifier,
-                'callback' => $callback
-            ];
-
-            return true;
-        }
-
-        return false;
+        $this->parsers[ $parserIdentifier ] = [
+            'ident' => $parserIdentifier,
+            'callback' => $callback
+        ];
     }
 
     
