@@ -210,6 +210,29 @@ class Mysql implements MysqlInterface
     }
 
     /* OK */
+    public function disconnect(bool $changeStatus = true)
+    {
+        if ($changeStatus) {
+            $this->status = self::MYSQL_DB_STATUS_DISCONNECTED;
+            $this->outSystem->stdout("Disconnected from DB Server!", OutSystem::LEVEL_NOTICE);
+        }
+            
+        $this->dbResource = null;
+    }
+
+    /* OK */
+    public function reconnect(): bool
+    {
+        $this->outSystem->stdout("Reconneting DB server ...", OutSystem::LEVEL_NOTICE);
+
+        $this->status = self::MYSQL_DB_STATUS_RECONNECTING;
+
+        $this->disconnect(false);
+
+        return $this->connect();
+    }
+
+    /* OK */
     public function selectDataBase(string $dbName = null): bool
     {
         if ($dbName === null)
@@ -1058,7 +1081,6 @@ class Mysql implements MysqlInterface
 
             return $retSpecific;
         }
-        
 
         if ($this->errorCode === null) {
             $this->outSystem->stdout("Could not solve, no error code", OutSystem::LEVEL_NOTICE);
@@ -1076,6 +1098,10 @@ class Mysql implements MysqlInterface
             /**
              * handle generic 'Syntax error or access violation'
             */
+            case "HY000":
+                /**
+                 * Master error code for error 2006
+                */
             case 42000:
                 $err_msg = \explode(':', $this->errorMsg);
 
@@ -1113,6 +1139,24 @@ class Mysql implements MysqlInterface
                 } 
                 
                 if (!$this->newDataBase($err_msg[1])) 
+                    return $retSpecific;
+            break;
+            /**
+             * [ERROR] MySQL server has gone away. Lost db resource
+             * [SOLUTION] Force disassociate current DB resource and reconnect using checkResource()
+            */
+			case 2006:
+				if ($this->errorMsg === null) {
+					$this->outSystem->stdout('Fail. No error message', OutSystem::LEVEL_NOTICE);
+					return $retSpecific;
+                } 
+                
+                if (\strpos($this->errorMsg, 'MySQL server has gone away') === false)
+                    return $retSpecific;
+
+                $this->disconnect();
+
+                if (!$this->checkResource())
                     return $retSpecific;
             break;
             /**
