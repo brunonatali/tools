@@ -158,7 +158,8 @@ class Mysql implements MysqlInterface
 
         // Could not connect while in break status 
         if ($this->status <= self::MYSQL_DB_STATUS_CONNECTING && 
-            $this->status != self::MYSQL_DB_STATUS_DISCONNECTED) {
+            $this->status !== self::MYSQL_DB_STATUS_DISCONNECTED &&
+            $this->status !== self::MYSQL_DB_STATUS_RECONNECTING) {
                 $this->outSystem->stdout("Aborted, status " . $this->status, OutSystem::LEVEL_NOTICE);
                 
                 return false;
@@ -192,6 +193,8 @@ class Mysql implements MysqlInterface
             $this->errorCode = $e->getCode();
 
             $this->outSystem->stdout('Fail. ' . $this->errorMsg, OutSystem::LEVEL_NOTICE);
+
+            $this->status = self::MYSQL_DB_STATUS_DISCONNECTED;
 
             if ($forceSolve) {
 
@@ -242,6 +245,11 @@ class Mysql implements MysqlInterface
                 $dbName = $this->mysqlDb;
         
         $this->outSystem->stdout("Selecting DB '$dbName': ", false, OutSystem::LEVEL_NOTICE);
+
+        if (!$this->isAvailable()) {
+            $this->outSystem->stdout("Fail. Server disconnected!", OutSystem::LEVEL_NOTICE);
+            return false;
+        }
 
         $result = $this->querySql("USE $dbName", $queryResult);
 
