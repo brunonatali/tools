@@ -103,7 +103,7 @@ class Mysql implements MysqlInterface
                 $autoConnect = $config;
         }
 
-        if ($this->loop === null)
+        if ($this->loop === null && $this->solveProblems)
             throw new \Exception( "Provide a LoopInterface.");
 
         if ($this->mysqlServer === null) 
@@ -134,7 +134,8 @@ class Mysql implements MysqlInterface
         );
         $this->outSystem = new OutSystem($config);
 
-        $this->queue = new Queue($this->loop);
+        if ($this->solveProblems)
+            $this->queue = new Queue($this->loop);
 
         if ($autoConnect) {
             $this->connect(); 
@@ -183,11 +184,13 @@ class Mysql implements MysqlInterface
 
             $this->outSystem->stdout("OK", OutSystem::LEVEL_NOTICE);
 
-            $this->queue->resume();
+            if ($forceSolve) 
+                $this->queue->resume();
             return true;
 		} catch (\PDOException $e) {
             // First of all pause queue to prevent itens to be dequeded
-            $this->queue->pause();
+            if ($forceSolve)
+                $this->queue->pause();
 
             $this->errorMsg = $e->getMessage();
             $this->errorCode = $e->getCode();
@@ -610,7 +613,7 @@ class Mysql implements MysqlInterface
             foreach ($whereWhatBkp as $what)
                 $sql .= '(' . \implode(',', $what) . '),';
         
-            $sql{ (\strlen($sql) - 1) } = ';'; // Removes last comma
+            $sql[ (\strlen($sql) - 1) ] = ';'; // Removes last comma
 
         } else {
             $sql .= '(' . \implode(',', $whatArr) . ')';
@@ -623,10 +626,8 @@ class Mysql implements MysqlInterface
                 if ($queryResult === null) {
                     $this->outSystem->stdout("Insert: Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
 
-                    if ($this->solveProblems) {
-        
+                    if ($this->solveProblems) 
                         return $this->tryToSolveTheProblem('insert', [$whereWhat, $config]);
-                    }
 
                     return false;
                 }
@@ -644,7 +645,134 @@ class Mysql implements MysqlInterface
 
         return true;
     }
+
+    public function update(string $column, $value, array $config)
+    {
+        $config += [
+            'table' => $this->currentTable,
+            'condition' => null
+        ];
+
+        if (\is_string($value)) {
+            if ($value == '')
+                $value = "NULL";
+            else
+                $value = "'$value'";
+        } else if (\is_numeric($value)) {
+            // Do nothing
+        } else {
+            $this->outSystem->stdout("Update: Fail. Value must be of type string or number", OutSystem::LEVEL_NOTICE);
+            return false;
+        }
+
+        if ($config['table'] === null) {
+            $this->outSystem->stdout("Update: Fail. Mismatch config", OutSystem::LEVEL_NOTICE);
+            return false;
+        }
+
+        $sql = 'UPDATE ' . $config['table'] . ' SET ' . $column . ' = ' . $value;
+
+        if ($config['condition'] !== null) {
+            if (\is_string($config['condition']) && $config['condition'] != '') {
+                $sql .= ' WHERE ' . $config['condition'];
+            } else if (isset($config['condition']['where']) && isset($config['condition']['like'])) {
+                $sql .= ' WHERE ' . $config['condition']['where'] . ' = ' . $config['condition']['like'];
+            } else {
+                $sql = null;
+            }
+        } else {
+            $sql = null;
+        }
+
+        if ($sql === null) {
+            $this->outSystem->stdout("Update: Fail. Wrong condition value", OutSystem::LEVEL_NOTICE);
+            return false;
+        }
+
+        $result = $this->querySql($sql, $queryResult);
+
+        if (\is_bool($result)) 
+            if ($result === false) {
+                if ($queryResult === null) {
+                    $this->outSystem->stdout("Update: Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
+
+                    if ($this->solveProblems) 
+                        return $this->tryToSolveTheProblem('update', [$whereWhat, $config]);
+
+                    return false;
+                }
+
+                $this->outSystem->stdout("Update: Fail.", OutSystem::LEVEL_NOTICE);
+
+                return false;
+            } else {
+                $this->outSystem->stdout("$sql: OK", OutSystem::LEVEL_NOTICE);
+        
+                return true;
+            }
+        
+        $this->outSystem->stdout("Update: Scheduled", OutSystem::LEVEL_NOTICE);
+
+        return true;
+    }
     
+    public function delete(array $config)
+    {
+        $config += [
+            'table' => $this->currentTable,
+            'condition' => null,
+            'remove' => false // Tell if table will be droped or just emptied
+        ];
+
+        if ($config['table'] === null) {
+            $this->outSystem->stdout("Update: Fail. Mismatch config", OutSystem::LEVEL_NOTICE);
+            return false;
+        }
+
+        if ($config['condition'] !== null) {
+            if (\is_string($config['condition']) && $config['condition'] != '') {
+                $sql .= 'DELETE FROM ' . $config['table'] . ' WHERE ' . $config['condition'];
+            } else if (isset($config['condition']['where']) && isset($config['condition']['like'])) {
+                $sql .= 'DELETE FROM ' . $config['table'] . ' WHERE ' . $config['condition']['where'] . 
+                    ' = ' . $config['condition']['like'];
+            } else {
+                $this->outSystem->stdout("Delete: Fail. Wrong condition value", OutSystem::LEVEL_NOTICE);
+                return false;
+            }
+        } else {
+            if ($config['remove'])
+                $sql = 'DROP TABLE ' . $config['table'];
+            else
+                $sql = 'TRUNCATE TABLE ' . $config['table'];
+        }
+
+        $result = $this->querySql($sql, $queryResult);
+
+        if (\is_bool($result)) 
+            if ($result === false) {
+                if ($queryResult === null) {
+                    $this->outSystem->stdout("Delete: Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
+
+                    if ($this->solveProblems) 
+                        return $this->tryToSolveTheProblem('delete', [$whereWhat, $config]);
+
+                    return false;
+                }
+
+                $this->outSystem->stdout("Delete: Fail.", OutSystem::LEVEL_NOTICE);
+
+                return false;
+            } else {
+                $this->outSystem->stdout("$sql: OK", OutSystem::LEVEL_NOTICE);
+        
+                return true;
+            }
+        
+        $this->outSystem->stdout("Delete: Scheduled", OutSystem::LEVEL_NOTICE);
+
+        return true;
+    }
+
     public function querySql(string $sql, &$result = null, bool $retry = true)
     {
         if (!$this->isAvailable())
@@ -871,6 +999,16 @@ class Mysql implements MysqlInterface
 			return false;
 		}
     }
+
+    public function getLastErrorMessage(): string
+    {
+        return (string) $this->errorMsg;
+    }
+
+    public function getLastErrorCode(): int
+    {
+        return (int) $this->errorCode;
+    }
     
     /* OK */
     private function getVarType($val): string
@@ -936,11 +1074,12 @@ class Mysql implements MysqlInterface
             $resource = &$this->dbResource;
 
         if (!$resource || \is_bool($resource)) {
-            // Pause queue  ASAP
-            $this->queue->pause();
-
             if ($forceSolve === null)
                 $forceSolve = $this->solveProblems;
+
+            // Pause queue  ASAP
+            if ($forceSolve)
+                $this->queue->pause();
 
             $this->connect($forceSolve);
 
@@ -1076,6 +1215,7 @@ class Mysql implements MysqlInterface
         }
 
         if ($retSpecific === self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN) {
+            // if ($this->solveProblems) <<<<<<<--- Check if is necessary. When solve probles is set to false
             $this->queue->push( function () {
                 $this->outSystem->stdout("Retrying scheduled '$funcName'", OutSystem::LEVEL_NOTICE);
                 \call_user_func_array(
@@ -1304,4 +1444,3 @@ class Mysql implements MysqlInterface
         return true;
     }
 }
-?>
