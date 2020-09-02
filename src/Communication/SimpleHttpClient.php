@@ -48,7 +48,8 @@ class SimpleHttpClient implements SimpleHttpClientInterface
         $this->config += [
             'proxy' => null, // '127.0.0.1:8080'
             'dns' => null,
-            'timeout' => 0
+            'timeout' => 0,
+            'verify_peer' => true
         ];
 
         if ($this->loop === null)
@@ -68,20 +69,47 @@ class SimpleHttpClient implements SimpleHttpClientInterface
         if ($this->config['proxy'] !== null) {
             $proxy = new ProxyConnector($this->config['proxy'], new Connector($this->loop));
 
-            $connector = new Connector($this->loop, array(
+            $connectorCfg = [
                 'tcp' => $proxy,
                 'dns' => false
-            ));
+            ];
+
+            if (!$this->config['verify_peer'])
+                $connectorCfg['tls'] = [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false
+                ];
+
+            $connector = new Connector($this->loop, $connectorCfg);
 
             $this->client = new Browser($this->loop, $connector);
         } else if ($this->config['dns'] !== null) {
-            $connector = new Connector($this->loop, [
+            $connectorCfg = [
                 'dns' => $this->config['dns']
-            ]);
+            ];
+
+            if (!$this->config['verify_peer'])
+                $connectorCfg['tls'] = [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false
+                ];
+
+            $connector = new Connector($this->loop, $connectorCfg);
 
             $this->client = new Browser($this->loop, $connector);
         } else {
-            $this->client = new Browser($this->loop);
+            if (!$this->config['verify_peer']) {
+                $connector = new Connector($this->loop, [
+                    'tls' => [
+                        'verify_peer' => false,
+                        'verify_peer_name' => false
+                    ]
+                ]);
+
+                $this->client = new Browser($this->loop, $connector);
+            } else {
+                $this->client = new Browser($this->loop);
+            }
         }
 
         if ($startLoop)
