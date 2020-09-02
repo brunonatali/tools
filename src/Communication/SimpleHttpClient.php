@@ -201,7 +201,7 @@ class SimpleHttpClient implements SimpleHttpClientInterface
 
         if (!isset($onError))
             $onError = function (\Exception $e) {
-                $this->outSystem->stdout('There was an error', $e->getMessage(), OutSystem::LEVEL_NOTICE);
+                $this->outSystem->stdout('There was an error' . $e->getMessage(), OutSystem::LEVEL_NOTICE);
             };
 
         $myRequestId = $this->getNextAvailableProcRequestId();
