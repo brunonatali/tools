@@ -670,7 +670,8 @@ class Mysql implements MysqlInterface
             return false;
         }
 
-        $sql = 'UPDATE ' . $config['table'] . ' SET ' . $column . ' = ' . $value;
+		$value = \addslashes($value);
+        $sql = 'UPDATE ' . $config['table'] . ' SET ' . $column . "='$value'";
 
         if ($config['condition'] !== null) {
             if (\is_string($config['condition']) && $config['condition'] != '') {
@@ -697,7 +698,7 @@ class Mysql implements MysqlInterface
                     $this->outSystem->stdout("Update: Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
 
                     if ($this->solveProblems) 
-                        return $this->tryToSolveTheProblem('update', [$whereWhat, $config]);
+                        return $this->tryToSolveTheProblem('update', [$column, $value, $config]);
 
                     return false;
                 }
@@ -754,7 +755,7 @@ class Mysql implements MysqlInterface
                     $this->outSystem->stdout("Delete: Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
 
                     if ($this->solveProblems) 
-                        return $this->tryToSolveTheProblem('delete', [$whereWhat, $config]);
+                        return $this->tryToSolveTheProblem('delete', [$config]);
 
                     return false;
                 }

@@ -16,14 +16,25 @@ interface MysqlInterface
     const MYSQL_DB_STATUS_CONNECTED = 0x05;
 
     const MYSQL_SPECIAL_JUST_CALL_ME_AGAIN = 0xFFF1;
-    /*
-    Const DB_CONNECTION = [
-        'disconnected' => 0x01,  // Disconnected
-        'forceDisconnected' => 0x02,  // Disconnected not try reconnecting
-        'reconnecting' => 0x03,  // Disconnected, scheduled new connection
-        'connecting' => 0x04,  // Connecting
-        'connected' => 0x05   // Connected
-    ];
-    */
+    
+    public function connect(bool $forceSolve = null): bool;
+    public function disconnect(bool $changeStatus = true);
+    public function reconnect(): bool;
+    public function selectDataBase(string $dbName = null): bool;
+    Public function selectTable(string $table);
+    public function newDataBase(string $db = null): bool;
+    public function newTable(string $table);
+    public function newColumn($column, array $config = []);
+    public function read(...$params): array;
+    public function insert(array $whereWhat, array $config = []);
+    public function update(string $column, $value, array $config);
+    public function delete(array $config);
+    public function querySql(string $sql, &$result = null, bool $retry = true);
+    public function changeColumnSpecs($column, array $config = []): bool;
+    public function isAvailable(): bool;
+    public function getColumnType(&$column, $table = null);
+    public function getLastErrorMessage(): string;
+    public function getLastErrorCode(): int;
+
 }
 ?>
