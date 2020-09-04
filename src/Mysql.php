@@ -650,14 +650,13 @@ class Mysql implements MysqlInterface
     {
         $config += [
             'table' => $this->currentTable,
-            'condition' => null
+            'condition' => null,
+            'values' => null
         ];
 
         if (\is_string($value)) {
             if ($value == '')
                 $value = "NULL";
-            else
-                $value = "'$value'";
         } else if (\is_numeric($value)) {
             // Do nothing
         } else {
@@ -670,14 +669,29 @@ class Mysql implements MysqlInterface
             return false;
         }
 
-		$value = \addslashes($value);
-        $sql = 'UPDATE ' . $config['table'] . ' SET ' . $column . "='$value'";
+        $sql = 'UPDATE ' . $config['table'] . ' SET ' . $column . "=?";
+
+        $values = [$value];
 
         if ($config['condition'] !== null) {
-            if (\is_string($config['condition']) && $config['condition'] != '') {
+            if (\is_string($config['condition']) && $config['condition'] != '' && 
+                $config['values'] != '') {
+
                 $sql .= ' WHERE ' . $config['condition'];
+                if (\is_array($config['values']))
+                    \array_merge($values, $config['values']);
+                else
+                    $values[] = $config['values'];
+
             } else if (isset($config['condition']['where']) && isset($config['condition']['like'])) {
-                $sql .= ' WHERE ' . $config['condition']['where'] . ' = ' . $config['condition']['like'];
+                
+                $sql .= ' WHERE ' . $config['condition']['where'] . '=?';
+
+                if (\is_array($config['condition']['like'])) 
+                    \array_merge($values, $config['condition']['like']);
+                else
+                    $values[] = $config['condition']['like'];
+
             } else {
                 $sql = null;
             }
@@ -690,7 +704,7 @@ class Mysql implements MysqlInterface
             return false;
         }
 
-        $result = $this->querySql($sql, $queryResult);
+        $result = $this->execPreparedSql($sql, $values, $queryResult);
 
         if (\is_bool($result)) 
             if ($result === false) {
@@ -707,7 +721,7 @@ class Mysql implements MysqlInterface
 
                 return false;
             } else {
-                $this->outSystem->stdout("$sql: OK", OutSystem::LEVEL_NOTICE);
+                $this->outSystem->stdout($this->debugPreparedSql($sql, $values) . ': OK', OutSystem::LEVEL_NOTICE);
         
                 return true;
             }
@@ -866,6 +880,102 @@ class Mysql implements MysqlInterface
             
             return false;
             
+		}
+    }
+
+    public function execPreparedSql(string $sql, array $values, &$result = null, bool $retry = true)
+    {
+        if (!$this->isAvailable())
+            return ($result = false);
+
+        if (!$this->checkResource()) {
+            $this->outSystem->stdout("Fail PSQL-CHK.", false, OutSystem::LEVEL_NOTICE);
+
+            if (!$retry)
+                return ($result = false);
+
+            $trace = \debug_backtrace()[1]; 
+
+            if ($trace['function']) {
+                $this->outSystem->stdout(
+                    " Rescheduling...", 
+                    $this->outSystem->getLastMsgHasEol(),
+                    OutSystem::LEVEL_NOTICE
+                );
+
+                return $this->tryToSolveTheProblem(
+                    $trace['function'], 
+                    $trace['args'], 
+                    self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN,
+                    $trace['class']
+                );
+            } else {
+                $this->outSystem->stdout(
+                    " Unable to retry", 
+                    $this->outSystem->getLastMsgHasEol(),
+                    OutSystem::LEVEL_NOTICE
+                );
+            }
+
+            return ($result = false);
+        }
+
+        try {
+
+            $prepared = $this->dbResource->prepare($sql);
+            
+            $result = $prepared->execute($values);
+
+            if (!$result) {
+                $this->outSystem->stdout("Fail PSQL-EXEC.", false, OutSystem::LEVEL_NOTICE);
+
+                if (!$retry) 
+                    return false;
+
+                $trace = \debug_backtrace()[1]; 
+
+                if ($trace['function']) {
+                    $this->outSystem->stdout(
+                        " Rescheduling...", 
+                        $this->outSystem->getLastMsgHasEol(),
+                        OutSystem::LEVEL_NOTICE
+                    );
+
+                    return $this->tryToSolveTheProblem(
+                        $trace['function'], 
+                        $trace['args'], 
+                        self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN,
+                        $trace['class']
+                    );
+                } else {
+                    $this->outSystem->stdout(
+                        " Unable to retry", 
+                        $this->outSystem->getLastMsgHasEol(),
+                        OutSystem::LEVEL_NOTICE
+                    );
+                }
+
+                return false;
+            }
+
+            return true;
+            
+		} catch (\PDOException $e) {
+            $result = null;
+
+            // Try to rollback even not is possible to prevent database damages
+            try {
+                $this->dbResource->rollBack();
+            } catch (\PDOException $th) {
+                // Nothing to do here;
+            }
+            
+			$this->errorMsg = $e->getMessage();
+            $this->errorCode = $e->getCode();
+
+            //$this->outSystem->stdout("Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
+            
+            return false;
 		}
     }
 
@@ -1197,6 +1307,24 @@ class Mysql implements MysqlInterface
                 unset($this->timers['connection']);
             });
         }
+    }
+
+    private function debugPreparedSql(string $query, array $params): string
+    {
+        $keys = array();
+
+        # build a regular expression for each parameter
+        foreach ($params as $key => $value) {
+            if (is_string($key)) {
+                $keys[] = '/:'.$key.'/';
+            } else {
+                $keys[] = '/[?]/';
+            }
+        }
+
+        $query = preg_replace($keys, $params, $query, 1, $count);
+
+        return $query;
     }
 
     private function tryToSolveTheProblem(
