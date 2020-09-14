@@ -26,6 +26,14 @@ class JsonFile
         if (empty($dataArray))
             return false;
 
+        if (\file_exists($file)) { // Check if file is writable
+            if (!\is_writable($file))
+                return false;
+        } else { // Check if directory is writable
+            if (!\is_writable(\dirname($file)))
+                return false;
+        }
+
         $args = [$file];
         $flags = 0;
         foreach ($usrArgs as $value) {
