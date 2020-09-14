@@ -1312,19 +1312,16 @@ class Mysql implements MysqlInterface
     private function debugPreparedSql(string $query, array $params): string
     {
         $keys = array();
-
-        # build a regular expression for each parameter
+        
         foreach ($params as $key => $value) {
-            if (is_string($key)) {
+            if (\is_string($key)) {
                 $keys[] = '/:'.$key.'/';
             } else {
                 $keys[] = '/[?]/';
             }
         }
 
-        $query = preg_replace($keys, $params, $query, 1, $count);
-
-        return $query;
+        return \preg_replace($keys, $params, $query, 1, $count);
     }
 
     private function tryToSolveTheProblem(
