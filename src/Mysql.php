@@ -254,7 +254,7 @@ class Mysql implements MysqlInterface
             return false;
         }
 
-        $result = $this->querySql("USE $dbName", $queryResult);
+        $result = $this->querySql("USE `$dbName`", $queryResult);
 
         if (\is_bool($result)) 
             if ($result === false) {
@@ -551,7 +551,8 @@ class Mysql implements MysqlInterface
     {    
         $config += [
             'table' => $this->currentTable,
-            'bulk' => false
+            'bulk' => false,
+            'update_if_exist' => false
         ];
 
         if ($config['table'] === null) {
@@ -613,10 +614,19 @@ class Mysql implements MysqlInterface
             foreach ($whereWhatBkp as $what)
                 $sql .= '(' . \implode(',', $what) . '),';
         
-            $sql[ (\strlen($sql) - 1) ] = ';'; // Removes last comma
-
+            $sql[ (\strlen($sql) - 1) ] = ' '; // Removes last comma
         } else {
-            $sql .= '(' . \implode(',', $whatArr) . ')';
+            $sql .= '(' . \implode(',', $whatArr) . ') ';
+        }
+            
+        if ($config['update_if_exist']) {
+            $sql .= 'ON DUPLICATE KEY UPDATE '; 
+            
+            foreach ($where as $column) {
+                $sql .= "`$column`=VALUES(`$column`),";
+            }
+
+            $sql[ (\strlen($sql) - 1) ] = ';'; // Replace last comma
         }
               
         $result = $this->querySql($sql, $queryResult);
@@ -1376,6 +1386,10 @@ class Mysql implements MysqlInterface
                 /**
                  * Master error code for error 2006
                 */
+            case "22001":
+                /**
+                 * Master error code for error 1406
+                */
             case 42000:
                 $err_msg = \explode(':', $this->errorMsg);
 
@@ -1539,7 +1553,54 @@ class Mysql implements MysqlInterface
                 
                 $this->outSystem->stdout('Fail. Could not be handled with this imputs', OutSystem::LEVEL_NOTICE);
 				return $retSpecific;
-			break;
+            break;
+            /**
+             * [ERROR] Data too long for column. Input data not fit in current column size
+             * [SOLUTION] Increase column size
+            */
+            case "1406":
+                if ($this->errorMsg === null) {
+					$this->outSystem->stdout('Fail. No error message', OutSystem::LEVEL_NOTICE);
+					return $retSpecific;
+                } 
+                
+                $err_msg = \explode('\'', $this->errorMsg);
+                
+				if (!isset($err_msg[1])) {
+                    $this->outSystem->stdout('Fail. Unable to find column name', OutSystem::LEVEL_NOTICE);
+					return $retSpecific;
+                } 
+
+                $changeColumnSpecsConfig = [
+                    'size' => 0
+                ];
+
+                foreach ($funcArgs as $funcArg) {
+                    if (\is_array($funcArg)) { // Add configs like table name 
+                        $changeColumnSpecsConfig += $funcArg;
+                    } else if (\is_string($funcArg) && $funcArg != $err_msg[1]) { // If not the column name
+                        if ($changeColumnSpecsConfig['size']) {
+                            $this->outSystem->stdout(
+                                'Fail. Unable determine which arg provided is the column value', 
+                                OutSystem::LEVEL_NOTICE
+                            );
+					        return $retSpecific;
+                        } else {
+                            $changeColumnSpecsConfig['size'] = \strlen((string) $funcArg);
+                        }
+                    }
+                }
+
+                if (!$changeColumnSpecsConfig['size']) {
+                    $this->outSystem->stdout('Fail. Unable determine column value size', OutSystem::LEVEL_NOTICE);
+                    return $retSpecific;
+                }
+
+                if (!$this->changeColumnSpecs($err_msg[1], $changeColumnSpecsConfig)) 
+                    return $retSpecific;
+                    
+                
+            break;
             default:
                 $this->outSystem->stdout(
                     "Fail. Code '" . $this->errorCode . "' not handled", 
