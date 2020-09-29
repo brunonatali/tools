@@ -208,6 +208,8 @@ class SimpleHttpClient implements SimpleHttpClientInterface
 
         if ($requestParams['method'] === null ||
             $requestParams['method'] === self::CLIENT_REQUEST_METHOD_GET) {
+            $this->outSystem->stdout("GET->$url", OutSystem::LEVEL_NOTICE);
+
             $this->underProcessRequests[$myRequestId] = [ 'promise' =>
                 $this->client->get(
                     $url, 
@@ -240,6 +242,8 @@ class SimpleHttpClient implements SimpleHttpClientInterface
                 )
             ];
         } else {
+            $this->outSystem->stdout("POST->$url", OutSystem::LEVEL_NOTICE);
+
             $this->underProcessRequests[$myRequestId] = [ 'promise' =>
                 $this->client->post(
                     $url, 
