@@ -593,7 +593,7 @@ class Mysql implements MysqlInterface
             }
 
         } else {
-            if (\count($whereWhatBkp) === 0) {
+            if (empty($whereWhatBkp)) {
                 $this->outSystem->stdout("Insert: Fail. Content is null", OutSystem::LEVEL_NOTICE);
                 return false;
             }
@@ -634,15 +634,30 @@ class Mysql implements MysqlInterface
         if (\is_bool($result)) 
             if ($result === false) {
                 if ($queryResult === null) {
-                    $this->outSystem->stdout("Insert: Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
+                    $this->outSystem->stdout("$sql: Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
 
-                    if ($this->solveProblems) 
+                    if ($this->solveProblems) {
+						if ($config['bulk']) {
+							$this->outSystem->stdout("Fail. Solve could not be done in BULK MODE, splitting ... ", OutSystem::LEVEL_NOTICE);
+							
+							$config['bulk'] = false;
+							$result = false;
+							foreach ($whereWhat as $index => $line) {
+								var_dump($index);
+								if ($index !== 0)
+									var_dump($this->insert($line, $config));
+							}
+							
+							return $result;
+						}
+						
                         return $this->tryToSolveTheProblem('insert', [$whereWhat, $config]);
+					}
 
                     return false;
                 }
 
-                $this->outSystem->stdout("Insert: Fail.", OutSystem::LEVEL_NOTICE);
+                $this->outSystem->stdout("$sql: Fail.", OutSystem::LEVEL_NOTICE);
 
                 return false;
             } else {
@@ -1136,12 +1151,18 @@ class Mysql implements MysqlInterface
     {
 		if (\is_string($val))
 			return "VARCHAR";
+		
+		if ($val === NULL)
+			return "NULL";
         
 		if (\is_int($val))
             return "INT";
 
-        if ($val === NULL || \is_bool($val)) 
+        if (\is_bool($val)) 
             return "BOOLEAN";
+		
+        if (\is_float($val)) 
+            return "FLOAT";
         
         if (\strtotime($val) !== FALSE) 
             return "TIMESTAMP";
@@ -1213,10 +1234,10 @@ class Mysql implements MysqlInterface
     private function checkStandardsValues(array $where, array &$whatArr, string $table = null)
     {
         if ($table === null) {
+			if ($this->currentTable === null)
+				return false;
+			
             $table = $this->currentTable;
-
-            if ($table === null)
-                return false;
         }
 
         if (count($where) !== count($whatArr))
@@ -1241,6 +1262,17 @@ class Mysql implements MysqlInterface
                         'size' => $size
                     ];
                 } else {
+					$this->outSystem->stdout("Ignoring column type when it`s undefined", OutSystem::LEVEL_NOTICE);
+					
+					//Just normalize variable when it`s VARCHAR
+					if ($type === "VARCHAR") 
+						$whatArr[$i] = "'" . self::mysql_escape_mimic($what) . "'";
+					else if ($type === "NULL")
+						$whatArr[$i] = "NULL";
+					
+					continue;
+					
+					// Ignore registration when not exist because it`s  hanging on solving while could not change column specs on unexistent column
                     $this->info[ $this->mysqlDb ][ $table ][ $where[$i] ] = [
                         'type' => $type, 
                         'size' => ($type === "VARCHAR" ? \strlen($what) : 10)
@@ -1252,7 +1284,7 @@ class Mysql implements MysqlInterface
 
                 $whatLen = \strlen((string) $what);
 
-                $whatArr[$i] = "'$what'";
+                $whatArr[$i] = "'" . self::mysql_escape_mimic($what) . "'";
 
                 if ($this->info[ $this->mysqlDb ][ $table ][ $where[$i] ]['size'] < $whatLen) {
                     if (!$this->changeColumnSpecs(
@@ -1273,7 +1305,7 @@ class Mysql implements MysqlInterface
                 if ($type === "VARCHAR") { 
                     $whatLen = \strlen((string) $what);
     
-                    $whatArr[$i] = "'$what'";
+                    $whatArr[$i] = "'" . self::mysql_escape_mimic($what) . "'";
 
                     if (!$this->changeColumnSpecs(
                         $where[$i], 
@@ -1630,4 +1662,20 @@ class Mysql implements MysqlInterface
 
         return true;
     }
+	
+	// Use this for non prepared PDO statements
+	static function mysql_escape_mimic($inp) {
+		if (is_array($inp))
+			return array_map(__METHOD__, $inp);
+
+		if (!empty($inp) && \is_string($inp)) {
+			return str_replace(
+				['\\', "\0", "\n", "\r", "'", '"', "\x1a"], 
+				['\\\\', '\\0', '\\n', '\\r', "\\'", '\\"', '\\Z'], 
+				$inp
+			);
+		}
+
+		return $inp;
+	} 
 }
