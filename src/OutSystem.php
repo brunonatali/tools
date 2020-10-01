@@ -208,6 +208,8 @@ class OutSystem implements OutSystemInterface
 
     public static function isPrintable(string $msg)
     {
+		return true; 
+		// Not working for some strings (como ç, ã ...), need to check
         return \preg_match('/^([\x09\x0A\x0D\x20-\x7E])*$/', $msg) === 1;
     }
 }
