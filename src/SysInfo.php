@@ -64,7 +64,7 @@ class SysInfo implements SysInfoInterface
         }
 
         $commands = [];
-        foreach ($this->ps($imputs) as $procLine) {
+        foreach (static::ps($imputs) as $procLine) {
             if ($catchArgs) 
                 $column = explode(' ', $procLine);
             else
