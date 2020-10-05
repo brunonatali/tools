@@ -76,4 +76,30 @@ class UsefulFunction
         
         return null;
     }
+
+    /**
+     * Compares two array and return tru if array is exactly equal (===)
+    */
+    public static function areArraysTheSame(array &$arrayA, array &$arrayB): bool
+    {
+        if (\count($arrayA) !== \count($arrayB))
+            return false;
+
+        foreach($arrayA as $k => $a) {
+            if (!isset($arrayB[$k])) 
+                return false;
+
+            if (\is_array($a)) {
+                if (\is_array($arrayB[$k])) {
+                    return self::areArraysTheSame($a, $arrayB[$k]);
+                }
+
+                return false;
+            } else if ($a !== $arrayB[$k]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }
