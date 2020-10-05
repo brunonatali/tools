@@ -40,7 +40,7 @@ class OnFileChange implements OnFileChangeInterface
             else if (\is_callable($config))
                 $this->call = $config;
 
-        if ($this->file === null)
+        if ($this->file == '')
             throw new \Exception("Provide a file name", self::ERROR_FILE_NAME_ABSENT);
             
         if ($this->call === null)
@@ -50,7 +50,7 @@ class OnFileChange implements OnFileChangeInterface
         $this->config += [
             'client_name' => 'FILE-X',
             'auto_start' => true,
-            'polling_time' => 1 // 1 second
+            'polling_time' => 1.0 // 1 second
         ];
 
         if ($this->loop === null)
@@ -105,10 +105,24 @@ class OnFileChange implements OnFileChangeInterface
                     $this->config['polling_time'],
                     function () {
                         if ($this->lastModifiedDate) {
-                            if (self::isFileChanged($this->file, $this->lastModifiedDate))
-                                ($this->call)($this->lastModifiedDate);
+                            try {
+                                if (self::isFileChanged($this->file, $this->lastModifiedDate))
+                                    ($this->call)($this->lastModifiedDate);
+                            } catch (\Exception $e) {
+                                $this->outSystem->stdout(
+                                    "Error reading file '$this->file': " . $e->getMessage(), 
+                                    OutSystem::LEVEL_NOTICE
+                                );
+                            }
                         } else {
-                            self::isFileChanged($this->file, $this->lastModifiedDate);
+                            try {
+                                self::isFileChanged($this->file, $this->lastModifiedDate);
+                            } catch (\Exception $e) {
+                                $this->outSystem->stdout(
+                                    "Error reading file '$this->file': " . $e->getMessage(), 
+                                    OutSystem::LEVEL_NOTICE
+                                );
+                            }
                         }
                     }
                 );
@@ -151,10 +165,10 @@ class OnFileChange implements OnFileChangeInterface
         if (!\file_exists($file))
             throw new \Exception("File '$file' not exist", self::ERROR_FILE_NOT_EXIST);
 
+        \clearstatcache(true, $file);
+            
         $result =  $lastModifiedDate !== ($currentDate = \filemtime($file));
         $lastModifiedDate = $currentDate;
-        \clearstatcache();
-
         return $result;
     }
 }
