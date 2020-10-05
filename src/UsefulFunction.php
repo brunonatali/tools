@@ -91,7 +91,8 @@ class UsefulFunction
 
             if (\is_array($a)) {
                 if (\is_array($arrayB[$k])) {
-                    return self::areArraysTheSame($a, $arrayB[$k]);
+                    if (!self::areArraysTheSame($a, $arrayB[$k]))
+                        return false;
                 }
 
                 return false;
@@ -99,7 +100,7 @@ class UsefulFunction
                 return false;
             }
         }
-
+        
         return true;
     }
 }
