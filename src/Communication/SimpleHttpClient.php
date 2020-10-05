@@ -165,7 +165,7 @@ class SimpleHttpClient implements SimpleHttpClientInterface
                 $requestParams['body'] = \json_encode($requestParams['header']['body']);
 
                 if ($requestParams['type'] === null)
-                    $requestParams['type'] = self::CLIENT_REQUEST_JSON;
+                    $requestParams['type'] = self::CLIENT_REQUEST_TYPE_JSON;
 
             } else if (isset($requestParams['body'])) {
                 $requestParams['body'] .= (string) $requestParams['header']['body'];
