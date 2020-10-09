@@ -111,15 +111,17 @@ class Ping implements PingInterface
             $this->pingSequence,
             null, // On add
             function ($dataInfo) use ($destination, $timeout, $count, $onResponse, $onError) { // On Response
+                $time = (\microtime(true) - $this->info[$destination]['time']);
+
                 $this->outSystem->stdout(
                     'Received ' . $dataInfo['total_len'] . ' bytes from: ' . 
                     $dataInfo['source'] . ' seq: ' . $dataInfo['sequence'] .
-                    ' time: ' . (string) (\microtime(true) - $this->info[$destination]['time']), 
+                    ' time: ' . (string) $time, 
                     OutSystem::LEVEL_NOTICE
                 );
 
                 if ($onResponse)
-                    ($onResponse)($dataInfo);
+                    ($onResponse)($time, $dataInfo);
 
                 if (\is_int($count))
                     $count --;

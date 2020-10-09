@@ -19,8 +19,8 @@ interface PingInterface
      * @param string $destination  destination IP address to ping
      * @param int $timeout  timeout on non repply in seconds
      * @param $count  number of requests to sent
-     * @param callable $onResponse  function to call on response. Inputs array $dataInfo
-     * @param callable $onError  function to call on timeout. Inputs array $dataInfo
+     * @param callable $onResponse  function to call on response. Inputs float $time, array $dataInfo
+     * @param callable $onError  function to call on timeout
     */
     public function send(
         string $destination, 
