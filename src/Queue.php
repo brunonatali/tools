@@ -10,82 +10,154 @@ class Queue
     Private $main;
     Private $loop;
     Private $timer;
-    Private $timeToAnswer;
+
     Private $listById = [];
+    Private $timeToAnswer = 0;
+
     Private $running = false;
     Private $enabled = false;
     Private $waitToRun = false;
+
     Private $lastErrorString;
 
-    function __construct(LoopInterface &$loop, $timeToAnswer = 0)
+    protected $outSystem;
+
+    function __construct(...$configs)
     {
         $this->main = new SplQueue();
-        $this->loop = &$loop;
-        $this->timeToAnswer = $timeToAnswer;
+        $config = [];
+        $info = [];
+
+        foreach ($configs as $param) {
+            if (is_array($param))
+                $config += $param;
+            else if ($param instanceof LoopInterface)
+                $this->loop = $param;
+            else if (\is_int($param))
+                $this->timeToAnswer = $param;
+        }
+
+        if ($this->timeToAnswer === 0 && isset($config['answer_timeout'])) {
+            if (!\is_int($config['answer_timeout']))
+
+            $this->timeToAnswer = $config['answer_timeout'];
+        }
+
+        $config = OutSystem::helpHandleAppName( 
+            $config,
+            [
+                "outSystemName" => 'QUEUE'
+            ]
+        );
+        $this->outSystem = new OutSystem($config);
     }
 
     /*
     * $retryOnError could be integer or bool, if is integer value will be decreased each time function is called
     */
-    Public function listAdd(string &$id = null, $onAdd = null, $onData = null, $onError = false, $retryOnError = null)
-    {
-        if ($id === null ) $id = $this->genId();
+    public function listAdd(
+        int &$id = null, 
+        callable $onAdd = null, 
+        callable $onData = null, 
+        callable $onError = null, 
+        int $retryOnError = null,
+        int $timeout = 0
+    ) {
+        if ($id === null ) 
+            $id = $this->genId();
+
+        if (isset($this->listById[$id]))
+            $this->listRemove($id);
+        
         $this->listById[$id] = [
             'id' => $id,
-            'onAdd' => $onAdd,
-            'onData' => $onData,
-            'onError' => $onError,
-            'retryOnError' => (is_int($retryOnError) ? $retryOnError - 1 : $retryOnError),
-            'timer' => ($this->timeToAnswer === 0 ? null : $this->loop->addTimer($this->timeToAnswer, function () use ($id){
-                $this->loop->cancelTimer($this->listById[$id][ 'timer' ]);
-                if (is_callable($this->listById[$id]['onError']))
-                    $this->listById[$id]['onError']($params = $this->listById[$id]);
-                if ($this->listById[$id]['retryOnError'])
-                    $this->listAdd(
-                        $this->listById[$id][ 'id' ],
-                        $this->listById[$id][ 'onAdd' ],
-                        $this->listById[$id][ 'onData' ],
-                        $this->listById[$id][ 'onError' ],
-                        $this->listById[$id][ 'retryOnError' ]
-                    );
-                else {
-                    $this->listRemove($id);
-                }
-            }))
+            'on_add' => $onAdd,
+            'on_data' => $onData,
+            'on_error' => $onError,
+            'retry_on_error' => $retryOnError,
+            'timer' => null
         ];
-        if (is_callable($this->listById[$id]['onAdd'])) {
-            echo "is callable";
-            return $this->listById[$id]['onAdd']($params = $this->listById[$id]);
-        }
+
+        $timeout = ($timeout > 0 ? $timeout : $this->timeToAnswer);
+
+        if ($timeout > 0)
+            $this->listById[$id]['timer'] = $this->loop->addTimer(
+                $timeout, 
+                function () use ($id, $timeout) {
+                    $this->listById[$id]['timer'] = null;
+
+                    if ($this->listById[$id]['on_error'])
+                        ($this->listById[$id]['on_error'])($this->listById[$id]);
+
+                    /**
+                     * Check on_error functions that removes / unset id from the main list
+                    */
+                    if (isset($this->listById[$id]) && $this->listById[$id]['retry_on_error']) {
+                        $this->listById[$id]['retry_on_error'] --;
+
+                        $this->listAdd(
+                            $this->listById[$id]['id'],
+                            $this->listById[$id]['on_add'],
+                            $this->listById[$id]['on_data'],
+                            $this->listById[$id]['on_error'],
+                            $this->listById[$id]['retry_on_error'],
+                            $timeout
+                        );
+                    } else {
+                        $this->listRemove($id);
+                    }
+                }
+            );
+
+        $this->outSystem->stdout("ADD: $id", OutSystem::LEVEL_NOTICE);
+
+        if ($onAdd)
+            return ($onAdd)($this->listById[$id]);
+
         return true;
     }
 
-    Public function listProcess(string $id, $data = null)
+    public function listProcess(int $id, $data = null)
     {
-        $toReturn = true;
-        if (!isset($this->listById[$id])) return false;
+        if (!isset($this->listById[$id])) 
+            return false;
 
-        if ($this->listById[$id][ 'timer' ] !== null) $this->loop->cancelTimer($this->listById[$id][ 'timer' ]);
-        if (is_callable($this->listById[$id]['onData']))
-            $toReturn = $this->listById[$id]['onData']($data, $params = $this->listById[$id]);
+        $toReturn = true;
+
+        $this->outSystem->stdout("PROCESS: $id", OutSystem::LEVEL_NOTICE);
+
+        if ($this->listById[$id]['timer'] !== null) 
+            $this->loop->cancelTimer($this->listById[$id]['timer']);
+
+        if ($this->listById[$id]['on_data'])
+            $toReturn = ($this->listById[$id]['on_data'])($data, $this->listById[$id]);
 
         $this->listRemove($id);
 
         return $toReturn;
     }
 
-    Public function listRemove(string $id)
+    public function listRemove(int $id): bool
     {
         if (isset($this->listById[$id])) {
+            $this->outSystem->stdout("REMOVE: $id", OutSystem::LEVEL_NOTICE);
+
+            if ($this->listById[$id]['timer'] !== null)
+                $this->loop->cancelTimer($this->listById[$id]['timer']);
+
 			unset($this->listById[$id]);
 			return true;
-		}
+        }
+        
 		return false;
     }
 
-    Public function getTryByListId($id)
+    public function getTryByListId(int $id)
     {
-        return $this->listById[$id][ 'retryOnError' ];
+        if (!isset($this->listById[$id]))
+            return false;
+
+        return $this->listById[$id]['retry_on_error'];
     }
 
     Public function push($value, number $id = null)
@@ -174,9 +246,9 @@ class Queue
         return isset($this->listById[$id]);
     }
 
-    Private function genId(): int
+    private function genId(): int
     {
-        while(isset($this->listById[$temp = rand()])) {}
+        while (isset($this->listById[$temp = \random_int()])) {}
         return $temp;
     }
 }
