@@ -70,7 +70,7 @@ class Ping implements PingInterface
                 if ($this->checkReceived($chunk)) {
                     $this->queue->listProcess($chunk['sequence'], $chunk);
 
-                    if (($destination = $this->getDestinationBySequence($chunk['sequence'])) !== null) {}
+                    if (($destination = $this->getDestinationBySequence($chunk['sequence'])) !== null)
                         $this->cancel($destination);
                 } else {
                     $this->outSystem->stdout(
