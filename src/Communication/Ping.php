@@ -176,6 +176,17 @@ class Ping implements PingInterface
         return new Socket($this->loop, $sock);
     }
 
+    public function cancel(string $destination): bool
+    {
+        if (!isset($this->info[$destination]))
+            return false;
+        
+        $this->queue->listRemove($this->info[$destination]['sequence']);
+
+        unset($this->info[$destination]);
+        return true;
+    }
+
     private function sendRaw(string $data, string $destination)
     {
         return \socket_sendto($this->rawSocket, $data, \strlen($data), 0, $destination, 0);
@@ -246,17 +257,6 @@ class Ping implements PingInterface
         $result = (~ $sum) & 0xFFFF; // $base = 0xFFFF;
 
         return \str_pad(dechex($result - 2), 4, "0", STR_PAD_LEFT); // Need to check why calc is 2 +
-    }
-
-    private function cancel(string $destination): bool
-    {
-        if (!isset($this->info[$destination]))
-            return false;
-        
-        $this->queue->listRemove($this->info[$destination]['sequence']);
-
-        unset($this->info[$destination]);
-        return true;
     }
 
     private function getDestinationBySequence(int $sequence)

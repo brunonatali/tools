@@ -21,6 +21,8 @@ interface PingInterface
      * @param $count  number of requests to sent
      * @param callable $onResponse  function to call on response. Inputs float $time, array $dataInfo
      * @param callable $onError  function to call on timeout
+     * 
+     * @return bool Result of sending ICMP to the socket
     */
     public function send(
         string $destination, 
@@ -34,4 +36,13 @@ interface PingInterface
      * Creates RAW socket to send ICMP ping and DGRAM socket to receive response
     */
     public function createIcmpV4();
+
+    /**
+     * Send ICMP echo request 
+     * 
+     * @param string $destination  destination IP address to ping
+     * 
+     * @return bool Cancelation result
+    */
+    public function cancel(string $destination): bool;
 }
