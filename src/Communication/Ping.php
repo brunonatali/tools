@@ -66,18 +66,35 @@ class Ping implements PingInterface
         if ($this->socket === null) {
             $this->socket = $this->createIcmpV4();
 
-            $this->socket->on('message', function ($chunk) use ($destination) {
+            $this->socket->on('message', function ($chunk) {
                 if ($this->checkReceived($chunk)) {
                     $this->queue->listProcess($chunk['sequence'], $chunk);
 
-                    $this->cancel($destination);
+                    if (($destination = $this->getDestinationBySequence($chunk['sequence'])) !== null) {}
+                        $this->cancel($destination);
                 } else {
                     $this->outSystem->stdout(
                         "Repply data error for: " . ($chunk['sequence'] ?? 'unknow'), 
                         OutSystem::LEVEL_NOTICE
                     );
-                }
 
+                    if (($destination = $this->getDestinationBySequence($chunk['sequence'])) !== null) {
+                        $count = $this->info[$destination]['count'];
+                        
+                        if ($this->info[$destination]['on_error'])
+                            ($this->info[$destination]['on_error'])();
+
+                        /* Could not call send again yet
+                            if (\is_int($count))
+                                $count --;
+                                
+                            if ($count)
+                                $this->send($destination, $timeout, $count, $onResponse, $onError);
+                            else
+                                $this->cancel($destination);
+                        */
+                    }
+                } 
             });
         }
 
@@ -85,7 +102,9 @@ class Ping implements PingInterface
         $this->cancel($destination);
 
         $this->info[$destination] = [
-            'sequence' => $this->getNextSequence()
+            'sequence' => $this->getNextSequence(),
+            'on_error' => $onError,
+            'count' => $count
         ];
 
         $this->queue->listAdd(
@@ -236,6 +255,16 @@ class Ping implements PingInterface
 
         unset($this->info[$destination]);
         return true;
+    }
+
+    private function getDestinationBySequence(int $sequence)
+    {
+        foreach ($this->info as $destination => $value) {
+            if ($value['sequence'] === $sequence)
+                return $destination;
+        }
+
+        return null;
     }
 
     private function getNextSequence(): int

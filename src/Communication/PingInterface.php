@@ -13,6 +13,25 @@ interface PingInterface
 
     const ICMP_CODE_ECHO = 0x00;
 
+    /**
+     * Send ICMP echo request 
+     * 
+     * @param string $destination  destination IP address to ping
+     * @param int $timeout  timeout on non repply in seconds
+     * @param $count  number of requests to sent
+     * @param callable $onResponse  function to call on response. Inputs array $dataInfo
+     * @param callable $onError  function to call on timeout. Inputs array $dataInfo
+    */
+    public function send(
+        string $destination, 
+        int $timeout = 0, 
+        $count = 1, 
+        callable $onResponse = null,
+        callable $onError = null
+    ): bool;
 
-
+    /**
+     * Creates RAW socket to send ICMP ping and DGRAM socket to receive response
+    */
+    public function createIcmpV4();
 }
