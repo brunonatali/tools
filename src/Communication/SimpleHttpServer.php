@@ -11,6 +11,9 @@ use React\Http\Message\Response;
 use React\Stream\ThroughStream;
 use Psr\Http\Message\ServerRequestInterface;
 
+use React\Promise\PromiseInterface;
+use React\Promise\Deferred;
+
 /**
  * Configurations are:
  * 
@@ -133,7 +136,8 @@ class SimpleHttpServer implements SimpleHttpServerInterface
             $content = [
                 'header' => $originalHeader,
                 'attribute' => $request->getAttributes(),
-                'path' => $request->getUri()->getPath()
+                'path' => $request->getUri()->getPath(),
+                'cookie' => $request->getCookieParams()
             ];
 
             if ($this->config['stream'])
@@ -209,47 +213,72 @@ class SimpleHttpServer implements SimpleHttpServerInterface
                     break;
             }
             
-            if ($response === null) {
-                if ($this->config['stream'])
-                    return new Response(
-                        (isset($content['code']) ? isset($content['code']) : 200),
-                        ['Content-Type' => 'text/plain'],
-                        $stream
-                    );
-                else
-                    return new Response(204);
-                    
-            } else if (\is_bool($response)) {
-                if (isset($content['header']))
-                    if ($content['header'] === $originalHeader)
-                        $content['header'] = [];
-    
-                if (isset($content['body'])) {
-                    if ($content['body'] === $originalBody) {
-                        $content['body'] = '';
-                    } else if (\is_array($content['body'])) {
-                        $content['body'] = \json_encode($content['body']);
-                        $content['header']['Content-Type'] = 'application/json';
-                    }
-                }
+            if ($response instanceof PromiseInterface) {
+                $deferred = new Deferred();
+                
+                $response->then(function ($response) use (&$deferred, &$content, $originalHeader, $originalBody) {
+                    $content['body'] = $response['response'];
 
-                if ($response)
-                    return new Response(
-                        (isset($content['code']) ? $content['code'] : 200),
-                        $content['header'],
-                        $content['body']
+                    $deferred->resolve(
+                        $this->handleResponse($response['result'], $content, $originalHeader, $originalBody)
                     );
-                else 
-                    return new Response(
-                        (isset($content['code']) ? $content['code'] : 418), // 418 I'm a teapot
-                        $content['header'],
-                        $content['body']
-                    );
+                })->otherwise(function (\Exception $x) {
+                    var_dump('(e1)->', $x);
+                })->otherwise(function (\Exception $x) {
+                    var_dump('(e2)->', $x);
+                })->otherwise(function (\Exception $x) {
+                    var_dump('(e3)->', $x);
+                });
+
+                return $deferred->promise();
             }
 
-            // Server error
-            return new Response(500);
+            return $this->handleResponse($response, $content, $originalHeader, $originalBody);
         });
+    }
+
+    private function handleResponse($result, array $content, $originalHeader, $originalBody)
+    {
+        if ($result === null) {
+            if ($this->config['stream'])
+                return new Response(
+                    (isset($content['code']) ? isset($content['code']) : 200),
+                    ['Content-Type' => 'text/plain'],
+                    $stream
+                );
+            else
+                return new Response(204);
+                
+        } else if (\is_bool($result)) {
+            if (isset($content['header']))
+                if ($content['header'] === $originalHeader)
+                    $content['header'] = [];
+
+            if (isset($content['body'])) {
+                if ($content['body'] === $originalBody) {
+                    $content['body'] = '';
+                } else if (\is_array($content['body'])) {
+                    $content['body'] = \json_encode($content['body']);
+                    $content['header']['Content-Type'] = 'application/json';
+                }
+            }
+
+            if ($result)
+                return new Response(
+                    (isset($content['code']) ? $content['code'] : 200),
+                    $content['header'],
+                    $content['body']
+                );
+            else 
+                return new Response(
+                    (isset($content['code']) ? $content['code'] : 418), // 418 I'm a teapot
+                    $content['header'],
+                    $content['body']
+                );
+        }
+
+        // Server error
+        return new Response(500);
     }
 
     private function procHeader(&$content)
