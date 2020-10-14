@@ -189,7 +189,7 @@ class Ping implements PingInterface
 
     private function sendRaw(string $data, string $destination)
     {
-        return \socket_sendto($this->rawSocket, $data, \strlen($data), 0, $destination, 0);
+        return @\socket_sendto($this->rawSocket, $data, \strlen($data), 0, $destination, 0);
     }
 
     private function genPingPacket(int $type, int $code, string $data = null)
