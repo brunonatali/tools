@@ -82,6 +82,8 @@ class SimpleBaseClient implements SimpleUnixInterface
 
             $this->scheduleConnect(5.0);
         });
+        
+        $this->outSystem->stdout('Connecting to ' . $this->uri, OutSystem::LEVEL_NOTICE);
 
         $this->connPromise = $this->myConn->connect($this->uri)->then(
             function (ConnectionInterface $serverConn) {
@@ -109,6 +111,7 @@ class SimpleBaseClient implements SimpleUnixInterface
     
                         while ($getData) {
                             if ($data !== null) {
+                                $this->outSystem->stdout('Read(ser): ' . $data, OutSystem::LEVEL_NOTICE);
                                 ($this->callback['data'])($data);
                                 $data = $this->dataMan->simpleSerialDecode();
                             } else {
@@ -116,19 +119,20 @@ class SimpleBaseClient implements SimpleUnixInterface
                             }
                         }
                     } else {
+                        $this->outSystem->stdout('Read: ' . $data, OutSystem::LEVEL_NOTICE);
                         ($this->callback['data'])($data);
                     }
                 });
 
                 $serverConn->on('end', function () {
                     $this->connected = false;
+    
+                    $this->outSystem->stdout("Connection ended", OutSystem::LEVEL_NOTICE);
 
                     ($this->callback['close'])($this->forcedClose);
 
                     if (!$this->forcedClose)
                         $this->scheduleConnect(5.0);
-    
-                    $this->outSystem->stdout("Connection ended", OutSystem::LEVEL_NOTICE);
                 });
             
                 $serverConn->on('error', function ($e) {
@@ -137,13 +141,13 @@ class SimpleBaseClient implements SimpleUnixInterface
             
                 $serverConn->on('close', function () {
                     $this->connected = false;
+    
+                    $this->outSystem->stdout("Closed", OutSystem::LEVEL_NOTICE);
 
                     ($this->callback['close'])($this->forcedClose);
 
                     if (!$this->forcedClose)
                         $this->scheduleConnect(5.0);
-    
-                    $this->outSystem->stdout("Closed", OutSystem::LEVEL_NOTICE);
                 });
             }
         )->otherwise(
