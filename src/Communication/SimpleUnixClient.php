@@ -48,7 +48,5 @@ final class SimpleUnixClient extends SimpleBaseClient implements SimpleUnixInter
             (isset($this->clientName) ? $this->clientName : 'SUC'), // SimpleUnixClient
             \array_merge(['serializeData' => true], $this->userConfig)
         );
-        
-        $this->outSystem->stdout('Connecting to ' . $this->serverSock, OutSystem::LEVEL_NOTICE);
     }
 }
