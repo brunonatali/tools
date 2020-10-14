@@ -45,4 +45,18 @@ interface PingInterface
      * @return bool Cancelation result
     */
     public function cancel(string $destination): bool;
+
+    /**
+     * Return last Ping error message 
+     * 
+     * @return string error
+    */
+    public function getErrorMessage(): string;
+
+    /**
+     * Return last Ping error code 
+     * 
+     * @return int error
+    */
+    public function getErrorCode(): int;
 }

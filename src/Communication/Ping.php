@@ -22,6 +22,9 @@ class Ping implements PingInterface
 
     private $queue;
 
+    private $errorMsg = null;
+    private $errorCode = 0;
+
     protected $outSystem;
 
     function __construct(...$configs)
@@ -98,6 +101,10 @@ class Ping implements PingInterface
             });
         }
 
+        // Reset error before new Ping request
+        $this->errorCode = 0;
+        $this->errorMsg = null;
+
         // Remove / Empty any old request
         $this->cancel($destination);
 
@@ -155,7 +162,19 @@ class Ping implements PingInterface
 
             return true;
         } else {
-            $this->outSystem->stdout("ERROR",OutSystem::LEVEL_NOTICE);
+            $errorCode = @\socket_last_error($this->rawSocket);
+
+            $this->errorMsg = @\socket_strerror($errorCode);
+
+            switch ($errorCode) {
+                case 101:
+                    $this->errorCode = self::ICMP_TYPE_DESTINATION_UNREACHABLE;
+                    break;
+            }
+
+            $this->outSystem->stdout("ERROR ($errorCode): $this->errorMsg",OutSystem::LEVEL_NOTICE);
+
+            $this->cancel($destination);
 
             return false;
         }
@@ -185,6 +204,16 @@ class Ping implements PingInterface
 
         unset($this->info[$destination]);
         return true;
+    }
+
+    public function getErrorMessage(): string
+    {
+        return (string) $this->errorMsg;
+    }
+
+    public function getErrorCode(): int
+    {
+        return (int) $this->errorCode;
     }
 
     private function sendRaw(string $data, string $destination)
