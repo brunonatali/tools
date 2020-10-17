@@ -137,13 +137,8 @@ class Mysql implements MysqlInterface
         if ($this->solveProblems)
             $this->queue = new Queue($this->loop);
 
-        if ($autoConnect) {
+        if ($autoConnect)
             $this->connect(); 
-
-            // Auto select database when pre configured
-            if ($this->mysqlDb !== null) 
-                $this->selectDataBase();
-        }
     }
 
     /* OK */
@@ -183,6 +178,10 @@ class Mysql implements MysqlInterface
             $this->status = self::MYSQL_DB_STATUS_CONNECTED;
 
             $this->outSystem->stdout("OK", OutSystem::LEVEL_NOTICE);
+
+            // Auto select database when pre configured
+            if ($this->mysqlDb !== null) 
+                $this->selectDataBase();
 
             if ($forceSolve) 
                 $this->queue->resume();
