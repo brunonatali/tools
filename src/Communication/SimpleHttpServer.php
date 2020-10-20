@@ -96,11 +96,27 @@ class SimpleHttpServer implements SimpleHttpServerInterface
 
     public function start(bool $startLoop = true)
     {
-        $this->socket = new \React\Socket\Server(
-            $this->config['ip'] . ':' . $this->config['port'], 
-            $this->loop
-        );
+        if ($this->config['cert'] !== null && \file_exists($this->config['cert']))
+            $this->socket = new \React\Socket\Server(
+                'tls://' . $this->config['ip'] . ':' . $this->config['port'], 
+                $this->loop, 
+                [ 'tls' => [
+                        'local_cert' => $this->config['cert'],
+                        'crypto_method' => STREAM_CRYPTO_METHOD_SSLv3_SERVER, //STREAM_CRYPTO_METHOD_TLSv1_2_SERVER,
+                        'verify_peer'       => false,
+                        'verify_peer_name'  => false,
+                        'allow_self_signed' => true,
+                        'verify_depth'      => 0
+                    ]
+                ]
+            );
+        else
+            $this->socket = new \React\Socket\Server(
+                $this->config['ip'] . ':' . $this->config['port'], 
+                $this->loop
+            );
 
+            /*
         if ($this->config['cert'] !== null && \file_exists($this->config['cert']))
             $this->socket = new \React\Socket\SecureServer(
                 $this->socket, 
@@ -109,6 +125,7 @@ class SimpleHttpServer implements SimpleHttpServerInterface
                     'local_cert' => $this->config['cert']
                 ]
             );
+            */
 
         $this->newServer();
 
@@ -234,6 +251,10 @@ class SimpleHttpServer implements SimpleHttpServerInterface
             }
 
             return $this->handleResponse($response, $content, $originalHeader, $originalBody);
+        });
+
+        $this->server->on('error', function (Exception $e) {
+            $this->outSystem->stdout('ERROR: ' . $e->getMessage(), OutSystem::LEVEL_NOTICE );
         });
     }
 
