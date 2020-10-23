@@ -699,11 +699,12 @@ class Mysql implements MysqlInterface
 
         if ($config['condition'] !== null) {
             if (\is_string($config['condition']) && $config['condition'] != '' && 
-                $config['values'] != '') {
+                $config['values'] !== null) {
 
                 $sql .= ' WHERE ' . $config['condition'];
+
                 if (\is_array($config['values']))
-                    \array_merge($values, $config['values']);
+                    $values += $config['values'];
                 else
                     $values[] = $config['values'];
 
@@ -943,7 +944,7 @@ class Mysql implements MysqlInterface
 
             return ($result = false);
         }
-
+        
         try {
 
             $prepared = $this->dbResource->prepare($sql);
