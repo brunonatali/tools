@@ -607,7 +607,7 @@ class Mysql implements MysqlInterface
         }
         
 
-        $sql = "INSERT INTO " . $config['table'] . " (" . \implode(',', $where) . ") VALUES ";
+        $sql = "INSERT INTO " . $config['table'] . " (`" . \implode('`,`', $where) . "`) VALUES ";
 
         if ($config['bulk']) {
             foreach ($whereWhatBkp as $what)
