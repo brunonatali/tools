@@ -239,12 +239,15 @@ class SimpleHttpServer implements SimpleHttpServerInterface
                     $deferred->resolve(
                         $this->handleResponse($response['result'], $content, $originalHeader, $originalBody)
                     );
-                })->otherwise(function (\Exception $x) {
-                    var_dump('(e1)->', $x);
-                })->otherwise(function (\Exception $x) {
-                    var_dump('(e2)->', $x);
-                })->otherwise(function (\Exception $x) {
-                    var_dump('(e3)->', $x);
+                })->otherwise(function (\Exception $x) use (&$deferred) {
+                    $this->outSystem->stdout('Main error (1): ' . $x->getMessage(), OutSystem::LEVEL_NOTICE );
+                    $deferred->resolve(new Response(500));
+                })->otherwise(function (\Exception $x) use (&$deferred) {
+                    $this->outSystem->stdout('Main error (2): ' . $x->getMessage(), OutSystem::LEVEL_NOTICE );
+                    $deferred->resolve(new Response(500));
+                })->otherwise(function (\Exception $x) use (&$deferred) {
+                    $this->outSystem->stdout('Main error (3): ' . $x->getMessage(), OutSystem::LEVEL_NOTICE );
+                    $deferred->resolve(new Response(500));
                 });
 
                 return $deferred->promise();
