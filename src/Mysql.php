@@ -679,8 +679,12 @@ class Mysql implements MysqlInterface
         ];
 
         if (\is_string($value)) {
+            /* TEST IF WORK NULLIFYING FIELD
             if ($value == '')
-                $value = "NULL";
+                $value = "''";
+            */
+        } else if ($value === null) {
+            $value = "NULL";
         } else if (\is_numeric($value)) {
             // Do nothing
         } else {
