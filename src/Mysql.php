@@ -1466,6 +1466,16 @@ class Mysql implements MysqlInterface
                     return $retSpecific;
             break;
             /**
+             * [ERROR]  Access denied for user ...
+             * [SOLUTION] Force disconnect & reconnect to renew credentials
+            */
+			case 1044:
+				$this->disconnect();
+                
+                if (!$this->connect()) 
+                    return $retSpecific;
+            break;
+            /**
              * [ERROR] MySQL server has gone away. Lost db resource
              * [SOLUTION] Force disassociate current DB resource and reconnect using checkResource()
             */
@@ -1495,11 +1505,28 @@ class Mysql implements MysqlInterface
 
                 $err_msg = \explode('\'', $this->errorMsg);
 
-                if (isset($err_msg[1]) &&
-                    ($table_name = \str_replace( $this->mysqlDb . '.', "", $err_msg[1])) != "") {
+                if (isset($err_msg[1])) {
+                    $database_name = explode('.', $err_msg[1], 2);
+                    if ($database_name[0] !== $this->mysqlDb) {
+                        $this->outSystem->stdout(
+                            'Fail. Selected DB ' . $this->mysqlDb . ' not match erro DB ' .$database_name[0], 
+                            OutSystem::LEVEL_NOTICE
+                        );
+                        return $retSpecific;
+                    }
 
-                        if (!$this->newTable($table_name)) 
-                            return $retSpecific;
+                    $table_name = \str_replace( $this->mysqlDb . '.', "", $err_msg[1]);
+                    
+                    if ($table_name == '' || $table_name != $database_name[1]) {
+                        $this->outSystem->stdout(
+                            "Fail. Double check table name '$table_name' and  " . $database_name[1], 
+                            OutSystem::LEVEL_NOTICE
+                        );
+                        return $retSpecific;
+                    }
+
+                    if (!$this->newTable($table_name)) 
+                        return $retSpecific;
                     
                 } else {
                     $this->outSystem->stdout('Fail. Unable to find table name', OutSystem::LEVEL_NOTICE);
