@@ -1272,7 +1272,9 @@ class Mysql implements MysqlInterface
 					if ($type === "VARCHAR") 
 						$whatArr[$i] = "'" . self::mysql_escape_mimic($what) . "'";
 					else if ($type === "NULL")
-						$whatArr[$i] = "NULL";
+                        $whatArr[$i] = "NULL";
+                    else if ($type === "INT" && $what == '')
+                        $whatArr[$i] = 0;
 					
 					continue;
 					
@@ -1303,6 +1305,9 @@ class Mysql implements MysqlInterface
                         
                     $this->info[ $this->mysqlDb ][ $table ][ $where[$i] ]['size'] = $whatLen; // Update registered size
                 }
+            } else if ($this->info[ $this->mysqlDb ][ $table ][ $where[$i] ]['type'] === "INT") {
+                if ($what == '')
+                    $whatArr[$i] = 0;
             } else if ($this->info[ $this->mysqlDb ][ $table ][ $where[$i] ]['type'] !== $type) {
                 // If database type is different than var type
 
@@ -1323,6 +1328,8 @@ class Mysql implements MysqlInterface
                         
                     // Force update registered size
                     $this->info[ $this->mysqlDb ][ $table ][ $where[$i] ]['size'] = $whatLen; 
+                } else if ($type === "INT" && $what == '') {
+                    $whatArr[$i] = 0;
                 }
             }
         }
