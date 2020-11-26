@@ -2,18 +2,21 @@
 
 namespace BrunoNatali\Tools;
 
-//use React\EventLoop\LoopInterface; // LoopInterface will be used to save log file using debug
-
 class OutSystem implements OutSystemInterface
 {
-    Private $outSystemEnabled = self::DEFAULT_OUT_SYSTEM_ENABLED;
-    Private $outSystemLevel = self::LEVEL_ALL; // Construct debug with all levels enabled
-    Private $outSystemEol = self::DEFAULT_OUT_SYSTEM_EOL; 
-    Private $outSystemEolMsg = null; // Eol to append - Auto configure at construct or direct call 
-    Private $outSystemDebug = false;
-    Private $outSystemName = self::DEFAULT_OUT_SYSTEM_NAME; 
-    Private $defaultLevel = self::DEFAULT_OUT_SYSTEM_LEVEL; 
-    Private $lastMsgHasEol = true;
+    private $outSystemEnabled = self::DEFAULT_OUT_SYSTEM_ENABLED;
+
+    private $outSystemLevel = self::DEFAULT_OUT_SYSTEM_LEVEL; 
+
+    private $outSystemEol = self::DEFAULT_OUT_SYSTEM_EOL; 
+
+    private $outSystemEolMsg = null; 
+
+    private $outSystemDebug = false;
+
+    private $outSystemName = self::DEFAULT_OUT_SYSTEM_NAME; 
+
+    private $lastMsgHasEol = true;
 
     //function __construct(array $config = [], LoopInterface &$loop = null)
     function __construct(array &$config = [])
@@ -42,41 +45,48 @@ class OutSystem implements OutSystemInterface
             if (\is_string($value)) 
                 $value = trim($value);
             
-            switch(true) {
-                case ($name === "OUTSYSTEMENABLED"):
-                    if (!is_bool($value)) throw new \Exception( "Configuration '$name' must be boolean.");
-                    $this->outSystemEnabled = $value;
-                    unset($config[$name]);
-                    break;
-                case ($name === "OUTSYSTEMDEBUG"):
-                    if (!is_bool($value)) throw new \Exception( "Configuration '$name' must be boolean.");
-                    $this->outSystemDebug = $value;
-                    unset($config[$name]);
-                    break;
-                case ($name === "OUTSYSTEMLEVEL"):
-                    if (!is_int($value)) throw new \Exception( "Configuration '$name' must be integer.");
-                    $this->outSystemLevel = $value;
-                    unset($config[$name]);
-                    break;
-                case ($name === "OUTSYSTEMEOL"):
-                    if (!is_bool($value)) throw new \Exception( "Configuration '$name' must be boolean.");
-                    $this->outSystemEol = $value;
-                    unset($config[$name]);
-                    break;
-                case ($name === "OUTSYSTEMEOLMSG"):
-                    if (!is_string($value)) throw new \Exception( "Configuration '$name' must be string.");
-                    $this->outSystemEolMsg = $value;
-                    unset($config[$name]);
-                    break;
-                case ($name === "OUTSYSTEMNAME"):
-                    if (!is_array($value) && !is_string($value)) throw new \Exception( "Configuration '$name' must be string or array of strings.");
-                    if (is_array($value)) {
-                        $this->outSystemName = '[' . implode('][', $value) . ']'; // This will help trace calls
-                    } else {
-                        $this->outSystemName = "[$value]";
-                    }
-                    unset($config[$name]);
-                    break;
+            if ($name === "OUTSYSTEMENABLED") {
+                if (!\is_bool($value)) 
+                    throw new \Exception("Configuration '$name' must be boolean.");
+
+                $this->outSystemEnabled = $value;
+                unset($config[$name]);
+            } else if ($name === "OUTSYSTEMDEBUG") {
+                if (!\is_bool($value)) 
+                    throw new \Exception("Configuration '$name' must be boolean.");
+
+                $this->outSystemDebug = $value;
+                unset($config[$name]);
+            } else if ($name === "OUTSYSTEMLEVEL") {
+                if (!\is_int($value) || $value < self::LEVEL_ALL || $value > self::LEVEL_IMPORTANT) 
+                    throw new \Exception(
+                        "Configuration '$name' must be integer and between " . self::LEVEL_ALL . " and " . self::LEVEL_IMPORTANT
+                    );
+
+                $this->outSystemLevel = $value;
+                unset($config[$name]);
+            } else if ($name === "OUTSYSTEMEOL") {
+                if (!\is_bool($value)) 
+                    throw new \Exception( "Configuration '$name' must be boolean.");
+
+                $this->outSystemEol = $value;
+                unset($config[$name]);
+            } else if ($name === "OUTSYSTEMEOLMSG") {
+                if (!\is_string($value)) 
+                    throw new \Exception( "Configuration '$name' must be string.");
+
+                $this->outSystemEolMsg = $value;
+                unset($config[$name]);
+            } else if ($name === "OUTSYSTEMNAME") {
+                if (!\is_array($value) && !\is_string($value)) 
+                    throw new \Exception( "Configuration '$name' must be string or array of strings.");
+
+                if (\is_array($value))
+                    $this->outSystemName = '[' . \implode('][', $value) . ']'; // This will help trace calls
+                else
+                    $this->outSystemName = "[$value]";
+                    
+                unset($config[$name]);
             }
         }
     }
@@ -118,7 +128,7 @@ class OutSystem implements OutSystemInterface
 
         $msg = null;
         $eol = $this->outSystemEol;
-        $level = $this->defaultLevel;
+        $level = self::DEFAULT_OUT_SYSTEM_LEVEL;
 
         foreach ($data as $param)
             if (\is_string($param)) // Message 
