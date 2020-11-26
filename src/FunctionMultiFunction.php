@@ -4,53 +4,61 @@ namespace BrunoNatali\Tools;
 
 class FunctionMultiFunction
 {
-    Public $initialized = false;
-    Public $functions;
-    Protected $myName = null;
-    Protected $outSystem;
+    public $functions = [];
 
-    function __construct(array $config = [])
+    private $sysConfig = [];
+
+    protected $initialized = false;
+
+    protected $outSystem;
+
+    function __construct(array $configs = [])
     {
-        if (isset($config['functionName'])) $this->myName = $config['functionName'];
+        $this->sysConfig = $configs += [
+            'name' => null // Function Multi Function
+        ];
 
         $config = OutSystem::helpHandleAppName( 
             $config,
-            ["outSystemName" => "FunctionMF-" . $this->myName]
+            [
+                "outSystemName" => "FMF" . ($this->sysConfig['name'] ? '-' . $this->sysConfig['name'] : '')
+            ]
         );
-        $this->outSystem = new OutSystem($config);
 
-        // Debug class initialization
-        // $this->outSystem->stdout(BrunoNatali\Tools\Encapsulation::formatClassConfigs4InitializationPrint($config));
-        
-        $this->functions = [
-            0 => function () {return true;} // Basic function to prevent non initialized to crash app
-        ];
+        $this->outSystem = new OutSystem($config);
     }
 
-    Public function add(callable $function, $index = null): int
+    public function add(callable $function, int $index = null): int
     {
-        if ($index === null) {
-            if ($this->initialized) {
-                $index = count($this->functions);
-            } else {
-                $index = 0; // Reset functions
-                $this->initialized = true;
-            }
-        } else if (!$this->initialized) {
-            unset($this->functions[0]); // Reset functions
-            $this->initialized = true;
-        }
+        if ($index === null && ($index = \array_key_last($this->functions)) === null)
+            $index = 0;
+
         $this->outSystem->stdout("Add function $index", OutSystem::LEVEL_ALL);
 
         $this->functions[$index] = $function;
+
         return $index;
     }
 
-    Public function exec(...$args): bool
+    public function del(int $index): bool
     {
+        if (isset($this->functions[$index])) {
+            unset($this->functions[$index]);
+            return true;
+        }
+
+        return false;
+    }
+
+    public function exec(...$args): bool
+    {
+        if (empty($this->functions[$index]))
+            return false;
+
         $this->outSystem->stdout("Executing functions", OutSystem::LEVEL_ALL);
 
-        foreach ($this->functions as $function) $function($args);
+        foreach ($this->functions as $function) 
+            ($function)($args);
 
         return true; // Return when all functions are handled
     }
