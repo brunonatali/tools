@@ -19,7 +19,7 @@ class FunctionMultiFunction
         ];
 
         $config = OutSystem::helpHandleAppName( 
-            $config,
+            $this->sysConfig,
             [
                 "outSystemName" => "FMF" . ($this->sysConfig['name'] ? '-' . $this->sysConfig['name'] : '')
             ]
@@ -28,14 +28,14 @@ class FunctionMultiFunction
         $this->outSystem = new OutSystem($config);
     }
 
-    public function add(callable $function, int $index = null): int
+    public function add($callback, int $index = null): int
     {
         if ($index === null && ($index = \array_key_last($this->functions)) === null)
             $index = 0;
 
         $this->outSystem->stdout("Add function $index", OutSystem::LEVEL_ALL);
 
-        $this->functions[$index] = $function;
+        $this->functions[$index] = $callback;
 
         return $index;
     }
@@ -52,14 +52,14 @@ class FunctionMultiFunction
 
     public function exec(...$args): bool
     {
-        if (empty($this->functions[$index]))
+        if (empty($this->functions))
             return false;
 
         $this->outSystem->stdout("Executing functions", OutSystem::LEVEL_ALL);
 
-        foreach ($this->functions as $function) 
-            ($function)($args);
-
+        foreach ($this->functions as $callback)
+            ($callback)(...$args);
+            
         return true; // Return when all functions are handled
     }
 }
