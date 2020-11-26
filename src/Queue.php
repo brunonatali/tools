@@ -109,7 +109,7 @@ class Queue
                 }
             );
 
-        $this->outSystem->stdout("ADD: $id", OutSystem::LEVEL_NOTICE);
+        $this->outSystem->stdout("ADD: $id", OutSystem::LEVEL_ALL);
 
         if ($onAdd)
             return ($onAdd)($this->listById[$id]);
@@ -124,7 +124,7 @@ class Queue
 
         $toReturn = true;
 
-        $this->outSystem->stdout("PROCESS: $id", OutSystem::LEVEL_NOTICE);
+        $this->outSystem->stdout("PROCESS: $id", OutSystem::LEVEL_ALL);
 
         if ($this->listById[$id]['timer'] !== null) 
             $this->loop->cancelTimer($this->listById[$id]['timer']);
@@ -140,7 +140,7 @@ class Queue
     public function listRemove(int $id): bool
     {
         if (isset($this->listById[$id])) {
-            $this->outSystem->stdout("REMOVE: $id", OutSystem::LEVEL_NOTICE);
+            $this->outSystem->stdout("REMOVE: $id", OutSystem::LEVEL_ALL);
 
             if ($this->listById[$id]['timer'] !== null)
                 $this->loop->cancelTimer($this->listById[$id]['timer']);
