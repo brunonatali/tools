@@ -1353,7 +1353,7 @@ class Mysql implements MysqlInterface
                 // Pre reset timer, but set as in use
                 $this->timers['connection'] = true; 
 
-                $this->outSystem->stdout('Trying schedulled connection.', OutSystem::LEVEL_NOTICE);
+                $this->outSystem->stdout('Trying scheduled connection.', OutSystem::LEVEL_NOTICE);
 
                 $this->connect($forceSolve);
 
