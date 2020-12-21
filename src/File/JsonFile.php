@@ -48,7 +48,7 @@ class JsonFile
                 \file_put_contents(
                     $file, 
                     \json_encode( 
-                        \array_merge(
+                        \BrunoNatali\Tools\UsefulFunction::array_merge_recursive(
                             ($overwrite ? [] : \call_user_func_array([__NAMESPACE__ . '\JsonFile', 'readAsArray'], $args)), 
                             $dataArray
                         ),
