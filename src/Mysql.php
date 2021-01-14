@@ -253,7 +253,7 @@ class Mysql implements MysqlInterface
             return false;
         }
 
-        $result = $this->querySql("USE `$dbName`", $queryResult);
+        $result = $this->execSql("USE `$dbName`", $queryResult);
 
         if (\is_bool($result)) 
             if ($result === false) {
@@ -295,7 +295,7 @@ class Mysql implements MysqlInterface
 
         $this->outSystem->stdout("Creating DB '$db': ", false, OutSystem::LEVEL_NOTICE);
 
-        $result = $this->querySql(
+        $result = $this->execSql(
             "CREATE DATABASE `$db`;
 				GRANT ALL ON `$db`.* TO '" . $this->mysqlUser . "'@'localhost';
                 FLUSH PRIVILEGES;", 
@@ -334,7 +334,7 @@ class Mysql implements MysqlInterface
     {
         $this->outSystem->stdout("Creating table '$table': ", false, OutSystem::LEVEL_NOTICE);
 
-        $result = $this->querySql(
+        $result = $this->execSql(
             "CREATE table $table(id INT( 11 ) AUTO_INCREMENT PRIMARY KEY);", 
             $queryResult
         );
@@ -415,7 +415,7 @@ class Mysql implements MysqlInterface
 		else 
 			$sql .= "NULL DEFAULT NULL";
             
-        $result = $this->querySql($sql, $queryResult);
+        $result = $this->execSql($sql, $queryResult);
 
         if (\is_bool($result)) 
             if ($result === false) {
@@ -628,7 +628,7 @@ class Mysql implements MysqlInterface
             $sql[ (\strlen($sql) - 1) ] = ';'; // Replace last comma
         }
               
-        $result = $this->querySql($sql, $queryResult);
+        $result = $this->execSql($sql, $queryResult);
 
         if (\is_bool($result)) 
             if ($result === false) {
@@ -769,7 +769,7 @@ class Mysql implements MysqlInterface
         ];
 
         if ($config['table'] === null) {
-            $this->outSystem->stdout("Update: Fail. Mismatch config", OutSystem::LEVEL_NOTICE);
+            $this->outSystem->stdout("Delete: Fail. Mismatch config", OutSystem::LEVEL_NOTICE);
             return false;
         }
 
@@ -790,7 +790,7 @@ class Mysql implements MysqlInterface
                 $sql = 'TRUNCATE TABLE ' . $config['table'];
         }
 
-        $result = $this->querySql($sql, $queryResult);
+        $result = $this->execSql($sql, $queryResult);
 
         if (\is_bool($result)) 
             if ($result === false) {
@@ -816,15 +816,125 @@ class Mysql implements MysqlInterface
 
         return true;
     }
+    
+    public function procedure(string $name, array $procedureArgs = [], ...$configs)
+    {
+        $config = [];
+        $callback = null;
 
-    public function querySql(string $sql, &$result = null, bool $retry = true)
+        foreach ($configs as &$cfg) {
+            if (\is_string($cfg)) 
+                $callback = $cfg;
+            else if (\is_array($cfg))
+                $config = $cfg;
+        }
+        
+        $config += [
+            'table' => $this->currentTable,
+            'use_table' => false // Use current configured table (%table%) into $callback
+        ];
+
+        $systemCallName = "procedure_$name";
+
+        if (!isset($this->info[ $this->mysqlDb ][$systemCallName])) {
+            if ($callback === null) {
+                $this->outSystem->stdout("Create procedure: Fail. Mismatch config", OutSystem::LEVEL_NOTICE);
+                return false;
+            }
+
+            // Drop procedure first
+            $result = $this->execSql("DROP PROCEDURE IF EXISTS $name", $queryResult);
+            if ($result === false) {
+                if ($queryResult === null) {
+                    $this->outSystem->stdout("Drop procedure: Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
+
+                    if ($this->solveProblems) {
+                        if (!$this->tryToSolveTheProblem('procedure', [$name, $procedureArgs, $configs]))
+                            return false;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    $this->outSystem->stdout("Drop procedure: Fail.", OutSystem::LEVEL_NOTICE);
+                    return false;
+                }
+            }
+
+            $this->info[ $this->mysqlDb ][$systemCallName] = null;
+        }
+
+        if ($this->info[ $this->mysqlDb ][$systemCallName] === null) {
+            if ($config['use_table']) {
+                if ($config['table'] === null || !\is_string($config['table']) || \strlen($config['table']) === 0) {
+                    $this->outSystem->stdout("Create procedure: Fail. Mismatch config", OutSystem::LEVEL_NOTICE);
+                    return false;
+                }
+
+                $callback = \str_replace('%table%', $config['table'], $callback);
+            }
+
+            // Create new procedure
+            $result = $this->execSql("CREATE PROCEDURE $callback", $queryResult);
+            if ($result === false) {
+                if ($queryResult === null) {
+                    $this->outSystem->stdout("Create procedure: Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
+
+                    if ($this->solveProblems) {
+                        if (!$this->tryToSolveTheProblem('procedure', [$name, $procedureArgs, $configs]))
+                            return false;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    $this->outSystem->stdout("Create procedure: Fail.", OutSystem::LEVEL_NOTICE);
+                    return false;
+                }
+            }
+
+            $this->info[ $this->mysqlDb ][$systemCallName] = true;
+        }
+
+        if (!empty($procedureArgs)) {
+            $sql = "CALL $name(" . \implode(', ', $procedureArgs) . ")";
+        } else {
+            $sql = "CALL $name()";
+        }
+
+        $result = $this->execSql($sql, $queryResult);
+
+        if (\is_bool($result)) 
+            if ($result === false) {
+                if ($queryResult === null) {
+                    $this->outSystem->stdout("Procedure: Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
+
+                    if ($this->solveProblems) 
+                        return $this->tryToSolveTheProblem('procedure', [$name, $procedureArgs, $configs]);
+
+                    return false;
+                }
+
+                $this->outSystem->stdout("Procedure: Fail.", OutSystem::LEVEL_NOTICE);
+
+                return false;
+            } else {
+                $this->outSystem->stdout("$sql: OK", OutSystem::LEVEL_NOTICE);
+        
+                return true;
+            }
+        
+        $this->outSystem->stdout("Procedure: Scheduled", OutSystem::LEVEL_NOTICE);
+
+        return true;
+    }
+
+    public function execSql(string $sql, &$result = null, bool $retry = true)
     {
         if (!$this->isAvailable())
             return ($result = false);
-
+            
         if (!$this->checkResource()) {
             $this->outSystem->stdout("Fail SQL-CHK.", false, OutSystem::LEVEL_NOTICE);
-
+            
             if (!$retry)
                 return ($result = false);
 
@@ -856,8 +966,8 @@ class Mysql implements MysqlInterface
 
         try {
 
-			$result = $this->dbResource->exec($sql);
-
+            $result = $this->dbResource->exec($sql);
+            
             if (!$this->testResult($result, $sql)) {
                 $this->outSystem->stdout("Fail SQL-EXEC.", false, OutSystem::LEVEL_NOTICE);
 
@@ -895,6 +1005,106 @@ class Mysql implements MysqlInterface
 		} catch (\PDOException $e) {
             $result = null;
 
+            // Try to rollback even not is possible to prevent database damages
+            try {
+                $this->dbResource->rollBack();
+            } catch (\PDOException $th) {
+                // Nothing to do here;
+            }
+            
+			$this->errorMsg = $e->getMessage();
+            $this->errorCode = $e->getCode();
+
+            //$this->outSystem->stdout("Fail. " . $this->errorMsg, OutSystem::LEVEL_NOTICE);
+            
+            return false;
+            
+		}
+    }
+
+    public function querySql(string $sql, &$result = null, bool $retry = true, bool $retAssoc = false)
+    {
+        $this->outSystem->stdout("Query SQL: $sql", OutSystem::LEVEL_NOTICE);
+
+        if (!$this->isAvailable())
+            return ($result = false);
+            
+        if (!$this->checkResource()) {
+            $this->outSystem->stdout("Fail SQL-CHK.", false, OutSystem::LEVEL_NOTICE);
+            
+            if (!$retry)
+                return ($result = false);
+
+            $trace = \debug_backtrace()[1]; 
+
+            if ($trace['function']) {
+                $this->outSystem->stdout(
+                    " Rescheduling...", 
+                    $this->outSystem->getLastMsgHasEol(),
+                    OutSystem::LEVEL_NOTICE
+                );
+
+                return $this->tryToSolveTheProblem(
+                    $trace['function'], 
+                    $trace['args'], 
+                    self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN,
+                    $trace['class']
+                );
+            } else {
+                $this->outSystem->stdout(
+                    " Unable to retry", 
+                    $this->outSystem->getLastMsgHasEol(),
+                    OutSystem::LEVEL_NOTICE
+                );
+            }
+
+            return ($result = false);
+        }
+        
+        try {
+
+            if ($retAssoc) 
+                $result = $this->dbResource->query($sql, \PDO::FETCH_ASSOC)->fetchAll();
+            else 
+                $result = $this->dbResource->query($sql)->fetchAll();
+
+            if (!$this->testResult($result, $sql)) {
+                $this->outSystem->stdout("Fail SQL-EXEC.", false, OutSystem::LEVEL_NOTICE);
+
+                if (!$retry) 
+                    return false;
+
+                $trace = \debug_backtrace()[1]; 
+
+                if ($trace['function']) {
+                    $this->outSystem->stdout(
+                        " Rescheduling...", 
+                        $this->outSystem->getLastMsgHasEol(),
+                        OutSystem::LEVEL_NOTICE
+                    );
+
+                    return $this->tryToSolveTheProblem(
+                        $trace['function'], 
+                        $trace['args'], 
+                        self::MYSQL_SPECIAL_JUST_CALL_ME_AGAIN,
+                        $trace['class']
+                    );
+                } else {
+                    $this->outSystem->stdout(
+                        " Unable to retry", 
+                        $this->outSystem->getLastMsgHasEol(),
+                        OutSystem::LEVEL_NOTICE
+                    );
+                }
+
+                return false;
+            }
+
+            return true;
+            
+		} catch (\PDOException $e) {
+            $result = null;
+            
             // Try to rollback even not is possible to prevent database damages
             try {
                 $this->dbResource->rollBack();
@@ -1051,7 +1261,7 @@ class Mysql implements MysqlInterface
 		else 
             $sql .= "NULL DEFAULT NULL";
             
-        $result = $this->querySql($sql, $queryResult);
+        $result = $this->execSql($sql, $queryResult);
 
         if (\is_bool($result)) 
             if ($result === false) {
@@ -1427,14 +1637,15 @@ class Mysql implements MysqlInterface
             */
             case "HY000":
                 /**
-                 * Master error code for error 2006
+                 * Master error code for error 2006 & 2014
                 */
             case "22001":
                 /**
                  * Master error code for error 1406
                 */
             case 42000:
-                $err_msg = \explode(':', $this->errorMsg);
+                // Limmiting to 3 (ex. SQLSTATE[HY000]: General error: 2014 Cannot execute ...)
+                $err_msg = \explode(':', $this->errorMsg, 3); 
 
                 $newErrorCode = intval( \array_pop($err_msg) );
 
@@ -1671,6 +1882,13 @@ class Mysql implements MysqlInterface
                     
                 
             break;
+            /**
+             * [ERROR] Cannot execute queries while other unbuffered queries are active
+             * [SOLUTION] Try unbuffering query by executing fetchAll()
+            */
+            case 2014:
+                $this->dbResource->fetchAll();
+            break;
             default:
                 $this->outSystem->stdout(
                     "Fail. Code '" . $this->errorCode . "' not handled", 
@@ -1698,7 +1916,7 @@ class Mysql implements MysqlInterface
             $funcArgs
         );
 
-        return true;
+        return true; 
     }
 	
 	// Use this for non prepared PDO statements
