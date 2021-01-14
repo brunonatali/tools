@@ -708,7 +708,7 @@ class Mysql implements MysqlInterface
                 $sql .= ' WHERE ' . $config['condition'];
 
                 if (\is_array($config['values']))
-                    $values += $config['values'];
+                    $values = \array_merge($values, $config['values']);
                 else
                     $values[] = $config['values'];
 
@@ -1124,6 +1124,7 @@ class Mysql implements MysqlInterface
 
     public function execPreparedSql(string $sql, array $values, &$result = null, bool $retry = true)
     {
+        var_dump($sql, $values);
         if (!$this->isAvailable())
             return ($result = false);
 
