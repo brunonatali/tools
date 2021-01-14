@@ -1124,7 +1124,6 @@ class Mysql implements MysqlInterface
 
     public function execPreparedSql(string $sql, array $values, &$result = null, bool $retry = true)
     {
-        var_dump($sql, $values);
         if (!$this->isAvailable())
             return ($result = false);
 
