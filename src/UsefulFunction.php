@@ -78,27 +78,38 @@ class UsefulFunction
     }
 
     /**
-     * Compares two array and return tru if array is exactly equal (===)
+     * Compares two multidimensional (or not) arrays and return true if array is 
+     *  exactly equal (===). Eg.
+     *  $a = [1, 2, 3, 'a' => 4, ['b' => 5]];
+     *  $b = ['a' => 4, 1, 2, 3, ['b' => 5]];
+     *  returns TRUE
+     * 
+     * If you set $bInA to TRUE you can compare array B with array A, to verify if 
+     *  content of array B is the same as array A. Eg. 
+     *  $a = [1, 2, 3, 4, 5];
+     *  $b = [1, 3, 5];
+     *  returns TRUE
+     * 
+     * @param array &$arrayA First array 
+     * @param array &$arrayB Second array
+     * @param bool $bInA Check only if array B have same indexes & values in array A 
+     * 
+     * @return bool  
     */
-    public static function areArraysTheSame(array &$arrayA, array &$arrayB): bool
+    public static function areArraysTheSame(array &$arrayA, array &$arrayB, bool $bInA = false): bool
     {
-        if (\count($arrayA) !== \count($arrayB))
+        if (!$bInA && \count($arrayA) !== \count($arrayB))
             return false;
 
-        foreach($arrayA as $k => $a) {
-            if (!isset($arrayB[$k])) 
+        foreach($arrayB as $k => $b) {
+            if (!isset($arrayA[$k])) 
                 return false;
 
-            if (\is_array($a)) {
-                if (\is_array($arrayB[$k])) {
-                    if (!self::areArraysTheSame($a, $arrayB[$k]))
-                        return false;
-                }
-
+            if (\is_array($b))
+                if (!\is_array($arrayA[$k]) || !self::areArraysTheSame($arrayA[$k], $b, $bInA))
+                    return false;
+            else if ($b !== $arrayA[$k])
                 return false;
-            } else if ($a !== $arrayB[$k]) {
-                return false;
-            }
         }
         
         return true;
