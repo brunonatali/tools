@@ -56,7 +56,7 @@ class Queue
     * $retryOnError could be integer or bool, if is integer value will be decreased each time function is called
     */
     public function listAdd(
-        int &$id = null, 
+        &$id = null, 
         callable $onAdd = null, 
         callable $onData = null, 
         callable $onError = null, 
@@ -117,7 +117,7 @@ class Queue
         return true;
     }
 
-    public function listProcess(int $id, $data = null)
+    public function listProcess($id, $data = null)
     {
         if (!isset($this->listById[$id])) 
             return false;
@@ -137,7 +137,7 @@ class Queue
         return $toReturn;
     }
 
-    public function listRemove(int $id): bool
+    public function listRemove($id): bool
     {
         if (isset($this->listById[$id])) {
             $this->outSystem->stdout("REMOVE: $id", OutSystem::LEVEL_ALL);
@@ -152,7 +152,7 @@ class Queue
 		return false;
     }
 
-    public function getTryByListId(int $id)
+    public function getTryByListId($id)
     {
         if (!isset($this->listById[$id]))
             return false;
