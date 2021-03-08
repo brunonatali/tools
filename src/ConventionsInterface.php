@@ -16,4 +16,7 @@ interface ConventionsInterface
     const DATA_TYPE_STATUS = 0x1050; /* Get / Return current status */
 
     const ACTION_CLEAR_STATUS = 0x2000; /* Clear current status -> OK (0) */ 
+    const ACTION_SUBSCRIBE = 0x2001; /* Ask to subscribe */ 
+    const ACTION_UNSUBSCRIBE = 0x2002; /* Ask to unsubscribe */ 
+
 }
