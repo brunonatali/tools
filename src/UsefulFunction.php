@@ -105,11 +105,12 @@ class UsefulFunction
             if (!isset($arrayA[$k])) 
                 return false;
 
-            if (\is_array($b))
+            if (\is_array($b)) {
                 if (!\is_array($arrayA[$k]) || !self::areArraysTheSame($arrayA[$k], $b, $bInA))
                     return false;
-            else if ($b !== $arrayA[$k])
+            } else if ($b !== $arrayA[$k]) {
                 return false;
+            }
         }
         
         return true;
