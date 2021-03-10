@@ -88,10 +88,12 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
              * Unsubscribe before make other request type
              * */ 
             if (isset($this->subscribers[$id])) {
-                if ($data['ident'] === self::ACTION_UNSUBSCRIBE)
+                if ($data['ident'] === self::ACTION_UNSUBSCRIBE) {
                     return $this->clientUnsubscribeFromChannel($this->subscribers[$id], $id);
-                else if ($data['ident'] !== self::ACTION_SUBSCRIBE)
+                } else if ($data['ident'] !== self::ACTION_SUBSCRIBE) {
+                    $this->info = 'Unsubscribe first';
                     return false;
+                }
             }
 
             $result = $this->parseData($data, $id);
@@ -151,6 +153,7 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
                 if (isset($content['channel'])) 
                     return $this->clientSubscribeToChannel($content['channel'], $id);
 
+                $this->info = 'Provide channel name';
                 return false;
             }
         ];
@@ -191,11 +194,10 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
         ];
     }
 
-    public function addChannel(string $channelName, callable $callback)
+    public function addChannel(string $channelName)
     {
         $this->channel[ $channelName ] = [
-            'subscribers' => [],
-            'callback' => $callback
+            'subscribers' => []
         ];
     }
 
@@ -288,8 +290,10 @@ class UnixServicePort implements \BrunoNatali\Tools\ConventionsInterface
 
     private function clientSubscribeToChannel(string $channelName, $clientId): bool
     {
-        if (!isset($this->channel[$channelName]))
+        if (!isset($this->channel[$channelName])) {
+            $this->info = 'Channel not exist';
             return false;
+        }
 
         if (isset($this->subscribers[$clientId]))
             if ($this->subscribers[$clientId] !== $channelName)
