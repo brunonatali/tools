@@ -88,6 +88,7 @@ class Queue
 
                     if ($this->listById[$id]['on_error'])
                         ($this->listById[$id]['on_error'])($this->listById[$id]);
+                        $this->listRemove($id);
 
                     /**
                      * Check on_error functions that removes / unset id from the main list
@@ -117,7 +118,7 @@ class Queue
         return true;
     }
 
-    public function listProcess($id, $data = null)
+    public function listProcess( $id, $data = null)
     {
         if (!isset($this->listById[$id])) 
             return false;
@@ -152,7 +153,7 @@ class Queue
 		return false;
     }
 
-    public function getTryByListId($id)
+    public function getTryByListId(int $id)
     {
         if (!isset($this->listById[$id]))
             return false;
@@ -160,11 +161,12 @@ class Queue
         return $this->listById[$id]['retry_on_error'];
     }
 
-    Public function push($value, number $id = null)
+    Public function push($value, int $id = null)
     {
         if ($id !== null) {
             try {
                 $this->main->add($id,$value);
+
             } catch (OutOfRangeException $e) {
                 $this->lastErrorString = $e;
                 return false;
@@ -186,10 +188,11 @@ class Queue
             $this->waitToRun = true;
             return false;
         }
-		
+
         $queueExecuteNode = $this->main->dequeue();
+
         if (is_callable($queueExecuteNode)) {
-            $this->running = true;
+$this->running = true;
             $this->timer = $this->loop->futureTick(function () use ($queueExecuteNode, &$count){
                 $queueExecuteNode();
                 $this->running = false;
