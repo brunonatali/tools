@@ -60,7 +60,7 @@ class Queue
         callable $onAdd = null, 
         callable $onData = null, 
         callable $onError = null, 
-        int $retryOnError = null,
+        $retryOnError = null,
         int $timeout = 0
     ) {
         if ($id === null ) 
