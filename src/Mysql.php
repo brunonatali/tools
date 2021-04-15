@@ -240,11 +240,14 @@ class Mysql implements MysqlInterface
     /* OK */
     public function selectDataBase(string $dbName = null): bool
     {
-        if ($dbName === null)
+        if ($dbName === null) {
             if ($this->mysqlDb === null) 
                 throw new \Exception( "Data Base name could not be empty.");
             else
                 $dbName = $this->mysqlDb;
+        } else {
+            $this->mysqlDb = $dbName;
+        }
         
         $this->outSystem->stdout("Selecting DB '$dbName': ", false, OutSystem::LEVEL_NOTICE);
 
