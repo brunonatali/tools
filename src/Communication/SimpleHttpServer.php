@@ -154,7 +154,8 @@ class SimpleHttpServer implements SimpleHttpServerInterface
                 'header' => $originalHeader,
                 'attribute' => $request->getAttributes(),
                 'path' => $request->getUri()->getPath(),
-                'cookie' => $request->getCookieParams()
+                'cookie' => $request->getCookieParams(),
+                'request' => &$request
             ];
 
             if ($this->config['stream'])
